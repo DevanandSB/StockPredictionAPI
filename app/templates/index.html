@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Market Prediction</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h2 class="text-center">Stock Market Prediction</h2>
+                        <p class="text-center">Using Fundamentals, Technicals, and Sentiment Analysis</p>
+                    </div>
+                    <div class="card-body">
+                        <div id="loading" class="text-center d-none">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2" id="loading-text">Loading data...</p>
+                        </div>
+
+                        <div id="error-alert" class="alert alert-danger d-none" role="alert"></div>
+                        <div id="success-alert" class="alert alert-success d-none" role="alert"></div>
+
+                        <!-- Company Selection -->
+                        <div class="row mb-4">
+                            <div class="col-md-8">
+                                <label for="company-select" class="form-label">Select Company</label>
+                                <select class="form-select" id="company-select">
+                                    <option value="">Choose a company...</option>
+                                    {% for company in companies %}
+                                    <option value="{{ company.symbol }}">{{ company.name }} ({{ company.symbol }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <button id="predict-btn" class="btn btn-primary btn-lg w-100" disabled>Predict</button>
+                            </div>
+                        </div>
+
+                        <!-- Data Display -->
+                        <div id="company-data" class="d-none">
+                            <div class="row">
+                                <!-- Fundamental Data -->
+                                <div class="col-md-4">
+                                    <div class="card mb-4">
+                                        <div class="card-header bg-info text-white">
+                                            <h5>Fundamental Analysis</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="fundamental-data">
+                                                <!-- Will be populated by JavaScript -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Technical Data -->
+                                <div class="col-md-4">
+                                    <div class="card mb-4">
+                                        <div class="card-header bg-warning text-dark">
+                                            <h5>Technical Analysis</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="technical-data">
+                                                <!-- Will be populated by JavaScript -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Sentiment Data -->
+                                <div class="col-md-4">
+                                    <div class="card mb-4">
+                                        <div class="card-header bg-success text-white">
+                                            <h5>Sentiment Analysis</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="sentiment-data">
+                                                <!-- Will be populated by JavaScript -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- News Articles Section -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5>Recent News Articles</h5>
+                <small>Sentiment analysis of recent news about the company</small>
+            </div>
+            <div class="card-body">
+                <div id="news-container">
+                    <div class="text-center text-muted">Select a company to load news articles</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+                        <!-- Results Section -->
+                        <div id="results" class="mt-4 d-none">
+                            <div class="card">
+                                <div class="card-header bg-dark text-white">
+                                    <h4>Prediction Results</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h5>Prediction: <span id="prediction-value" class="badge bg-primary fs-6"></span></h5>
+                                            <h5>Confidence: <span id="confidence-value" class="badge bg-info fs-6"></span></h5>
+                                            <h5>Model Type: <span id="model-type" class="badge bg-secondary fs-6"></span></h5>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card">
+                                                <div class="card-header">
+                                                    <h6>Interpretation</h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <p id="interpretation-text"></p>
+                                                    <p class="text-muted small">Data sources: Yahoo Finance for fundamentals and technicals, simulated sentiment analysis</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/script.js"></script>
+</body>
+</html>

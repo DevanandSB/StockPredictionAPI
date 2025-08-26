@@ -1,0 +1,22 @@
+[
+    {"symbol": "RELIANCE", "name": "Reliance Industries Ltd."},
+    {"symbol": "TCS", "name": "Tata Consultancy Services Ltd."},
+    {"symbol": "HDFCBANK", "name": "HDFC Bank Ltd."},
+    {"symbol": "INFY", "name": "Infosys Ltd."},
+    {"symbol": "ICICIBANK", "name": "ICICI Bank Ltd."},
+    {"symbol": "HINDUNILVR", "name": "Hindustan Unilever Ltd."},
+    {"symbol": "SBIN", "name": "State Bank of India"},
+    {"symbol": "BHARTIARTL", "name": "Bharti Airtel Ltd."},
+    {"symbol": "ITC", "name": "ITC Ltd."},
+    {"symbol": "BAJFINANCE", "name": "Bajaj Finance Ltd."},
+    {"symbol": "KOTAKBANK", "name": "Kotak Mahindra Bank Ltd."},
+    {"symbol": "HCLTECH", "name": "HCL Technologies Ltd."},
+    {"symbol": "AXISBANK", "name": "Axis Bank Ltd."},
+    {"symbol": "ASIANPAINT", "name": "Asian Paints Ltd."},
+    {"symbol": "MARUTI", "name": "Maruti Suzuki India Ltd."},
+    {"symbol": "LT", "name": "Larsen & Toubro Ltd."},
+    {"symbol": "TITAN", "name": "Titan Company Ltd."},
+    {"symbol": "SUNPHARMA", "name": "Sun Pharmaceutical Industries Ltd."},
+    {"symbol": "NTPC", "name": "NTPC Ltd."},
+    {"symbol": "ONGC", "name": "Oil and Natural Gas Corporation Ltd."}
+]

@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  stock-prediction-api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app/data:/app/app/data  # Mount data directory for easy model updates
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    container_name: stock-prediction-api
+
+volumes:
+  model-data:
