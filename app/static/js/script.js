@@ -1,3 +1,5 @@
+// app/static/js/script.js
+
 document.addEventListener('DOMContentLoaded', function() {
     const companySelect = document.getElementById('company-select');
     const predictBtn = document.getElementById('predict-btn');
@@ -5,253 +7,215 @@ document.addEventListener('DOMContentLoaded', function() {
     const loadingText = document.getElementById('loading-text');
     const errorAlert = document.getElementById('error-alert');
     const successAlert = document.getElementById('success-alert');
-    const results = document.getElementById('results');
+    const resultsContainer = document.getElementById('results');
     const companyData = document.getElementById('company-data');
 
     let currentCompanyData = null;
 
-    // Company selection handler
-    companySelect.addEventListener('change', async function() {
-        const symbol = this.value;
+    // --- Event Listeners ---
+    companySelect.addEventListener('change', handleCompanySelect);
+    predictBtn.addEventListener('click', handlePrediction);
 
+    // --- Handlers ---
+    async function handleCompanySelect() {
+        const symbol = this.value;
+        resetUIState();
         if (!symbol) {
             predictBtn.disabled = true;
-            companyData.classList.add('d-none');
             return;
         }
-
-        // Show loading
-        loading.classList.remove('d-none');
-        loadingText.textContent = `Fetching data for ${symbol}...`;
-        errorAlert.classList.add('d-none');
-        companyData.classList.add('d-none');
-        results.classList.add('d-none');
-
+        setLoadingState(true, `Fetching data for ${symbol}...`);
         try {
-            // Fetch company data
             const response = await fetch(`/api/company/${symbol}`);
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-                throw new Error(errorData.detail || 'Failed to fetch company data');
-            }
-
+            if (!response.ok) throw new Error((await response.json()).detail || 'Failed to fetch company data');
             const data = await response.json();
             currentCompanyData = data;
-
-            // Display the data
             displayCompanyData(data);
-
-            // Enable predict button
-            predictBtn.disabled = false;
             companyData.classList.remove('d-none');
-
+            predictBtn.disabled = false;
         } catch (error) {
-            errorAlert.classList.remove('d-none');
-            errorAlert.textContent = 'Error: ' + error.message;
-            console.error('Data fetch error:', error);
+            showError('Data fetch error: ' + error.message);
         } finally {
-            loading.classList.add('d-none');
+            setLoadingState(false);
         }
-    });
+    }
 
-    // Predict button handler
-    predictBtn.addEventListener('click', async function() {
+    async function handlePrediction() {
         if (!currentCompanyData) return;
-
-        // Show loading
-        loading.classList.remove('d-none');
-        loadingText.textContent = 'Making prediction...';
-        errorAlert.classList.add('d-none');
-        results.classList.add('d-none');
-
+        resetUIState(true);
+        setLoadingState(true, 'Analyzing market data and making predictions...');
         try {
-            // Make prediction - use POST method instead of GET
-            // In your predict button handler
-const response = await fetch('/predict', {
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-        fundamental_data: currentCompanyData.fundamentals,
-        technical_data: currentCompanyData.technicals,
-        sentiment_data: currentCompanyData.sentiment,
-        prediction_type: "combined"
-    })
-});
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ detail: 'Prediction failed' }));
-                throw new Error(errorData.detail || 'Prediction failed');
-            }
-
+            const response = await fetch(`/api/predict-horizons/${companySelect.value}`, { method: 'POST' });
+            if (!response.ok) throw new Error((await response.json()).detail || 'Prediction failed');
             const result = await response.json();
-
-            // Display results
-            displayResults(result);
-
-            // Show success message
-            successAlert.classList.remove('d-none');
-            successAlert.textContent = `Prediction completed for ${currentCompanyData.company_name || companySelect.value}!`;
-
+            displayHorizonResults(result);
+            showSuccess(`Predictions generated for ${currentCompanyData.company_name || companySelect.value}!`);
         } catch (error) {
-            errorAlert.classList.remove('d-none');
-            errorAlert.textContent = 'Error: ' + error.message;
-            console.error('Prediction error:', error);
+            showError('Prediction error: ' + error.message);
         } finally {
-            loading.classList.add('d-none');
+            setLoadingState(false);
         }
-    });
+    }
 
-    // Display company data
+    // --- UI Update Functions ---
     function displayCompanyData(data) {
-        // Display fundamentals
-        const fundamentalDiv = document.querySelector('.fundamental-data');
-        fundamentalDiv.innerHTML = Object.entries(data.fundamentals || {})
-            .map(([key, value]) => `
-                <div class="mb-2">
-                    <strong>${formatKey(key)}:</strong> 
-                    <span class="float-end">${typeof value === 'number' ? value.toFixed(2) : value}</span>
-                </div>
-            `).join('');
-
-        // Display technicals
-        const technicalDiv = document.querySelector('.technical-data');
-        technicalDiv.innerHTML = Object.entries(data.technicals || {})
-            .map(([key, value]) => `
-                <div class="mb-2">
-                    <strong>${formatKey(key)}:</strong> 
-                    <span class="float-end">${typeof value === 'number' ? value.toFixed(2) : value}</span>
-                </div>
-            `).join('');
-
-        // Display sentiment
-        const sentimentDiv = document.querySelector('.sentiment-data');
-        sentimentDiv.innerHTML = Object.entries(data.sentiment || {})
-            .filter(([key]) => key !== 'articles') // Exclude articles from main sentiment display
-            .map(([key, value]) => {
-                let displayValue = typeof value === 'number' ? value.toFixed(2) : value;
-                let badgeClass = 'badge bg-secondary';
-
-                if (key.includes('sentiment') || key.includes('rating')) {
-                    if (value >= 0.7) badgeClass = 'badge bg-success';
-                    else if (value >= 0.4) badgeClass = 'badge bg-warning';
-                    else badgeClass = 'badge bg-danger';
-                }
-
-                return `
-                    <div class="mb-2">
-                        <strong>${formatKey(key)}:</strong> 
-                        <span class="float-end ${badgeClass}">${displayValue}</span>
-                    </div>
-                `;
-            }).join('');
-
-        // Display news articles in a separate section
+        document.querySelector('.fundamental-data').innerHTML = renderKeyValuePairs(data.fundamentals);
+        document.querySelector('.technical-data').innerHTML = renderKeyValuePairs(data.technicals);
+        document.querySelector('.sentiment-data').innerHTML = renderKeyValuePairs(data.sentiment, true);
         displayNewsArticles(data.sentiment?.articles || []);
     }
 
-    // Display news articles
-    // In your displayCompanyData function, add:
+    function renderKeyValuePairs(data, isSentiment = false) {
+        if (!data || Object.keys(data).length === 0) return '<p class="text-muted small text-center">Data not available.</p>';
+        return Object.entries(data)
+            .filter(([key]) => key !== 'articles')
+            .map(([key, value]) => {
+                const keyLower = key.toLowerCase();
+                let displayValue = (keyLower.includes('cap') || keyLower.includes('volume'))
+                    ? formatLargeNumber(value)
+                    : formatValue(value);
 
-// Add this function to display news properly
-function displayNewsArticles(articles) {
-    const newsContainer = document.getElementById('news-container');
-    if (!newsContainer) return;
-
-    if (!articles || articles.length === 0) {
-        newsContainer.innerHTML = '<div class="text-center text-muted">No news articles available</div>';
-        return;
+                if (isSentiment && (key.includes('sentiment') || key.includes('rating'))) {
+                    displayValue = `<span class="badge ${getSentimentBadgeClass(value)}">${displayValue}</span>`;
+                }
+                return `<div class="mb-2"><strong>${formatKey(key)}:</strong><span class="float-end">${displayValue}</span></div>`;
+            }).join('');
     }
 
-    newsContainer.innerHTML = articles.map(article => `
-        <div class="card mb-3">
-            <div class="card-body">
-                <h6 class="card-title">${article.title || 'No title'}</h6>
-                <p class="card-text small text-muted">${article.preview || 'No description available'}</p>
-                <div class="d-flex justify-content-between align-items-center">
-                    <small class="text-muted">${article.source || 'Unknown source'} • ${formatDate(article.published_at)}</small>
-                    <span class="badge ${getSentimentBadgeClass(article.sentiment)}">
-                        ${(article.sentiment * 100).toFixed(0)}% sentiment
-                    </span>
-                </div>
-                ${article.url ? `<a href="${article.url}" target="_blank" class="btn btn-sm btn-outline-primary mt-2">Read more</a>` : ''}
-            </div>
-        </div>
-    `).join('');
-}
+    /**
+     * THIS IS THE CORRECTED FUNCTION FOR DISPLAYING NEWS
+     */
+    function displayNewsArticles(articles) {
+        const sentimentCardBody = document.querySelector('.sentiment-data')?.parentElement;
+        if (!sentimentCardBody) return;
 
-// Helper functions
-function formatDate(dateString) {
-    if (!dateString) return 'Unknown date';
-    try {
-        return new Date(dateString).toLocaleDateString();
-    } catch {
-        return dateString;
-    }
-}
+        let newsSection = sentimentCardBody.querySelector('#news-section');
+        if (newsSection) newsSection.remove();
 
-function getSentimentBadgeClass(sentiment) {
-    if (sentiment >= 0.7) return 'bg-success';
-    if (sentiment >= 0.6) return 'bg-info';
-    if (sentiment >= 0.4) return 'bg-warning';
-    return 'bg-danger';
-}
-    // Display prediction results
-    function displayResults(result) {
-        document.getElementById('prediction-value').textContent = result.prediction > 0
-            ? `+${result.prediction.toFixed(2)}%`
-            : `${result.prediction.toFixed(2)}%`;
+        newsSection = document.createElement('div');
+        newsSection.id = 'news-section';
 
-        document.getElementById('confidence-value').textContent = (result.confidence * 100).toFixed(2) + '%';
-        document.getElementById('model-type').textContent = result.model_type || 'unknown';
+        const newsContainer = document.createElement('div');
+        newsContainer.id = 'news-container';
 
-        // Add interpretation
-        const interpretationText = document.getElementById('interpretation-text');
-        if (result.prediction > 5) {
-            interpretationText.textContent = 'Strong buy signal! The model predicts significant positive performance.';
-        } else if (result.prediction > 0) {
-            interpretationText.textContent = 'Buy signal. The model predicts positive performance with reasonable confidence.';
-        } else if (result.prediction > -5) {
-            interpretationText.textContent = 'Neutral to slightly negative. The model suggests caution.';
+        if (!articles || articles.length === 0) {
+            newsSection.innerHTML = `<hr><p class="text-center text-muted small mt-3">No recent news articles found.</p>`;
         } else {
-            interpretationText.textContent = 'Strong sell signal. The model predicts significant negative performance.';
+            newsSection.innerHTML = `<hr><h6 class="mb-3 mt-3">Relevant News</h6>`;
+            // This .map() logic is now correctly implemented
+            newsContainer.innerHTML = articles.map(article => `
+                <div class="card mb-2">
+                    <div class="card-body p-2">
+                        <a href="${article.url}" target="_blank" rel="noopener noreferrer" class="text-dark text-decoration-none">
+                            <h6 class="card-title" style="font-size: 0.85rem; margin-bottom: 0.25rem;">${article.title || 'No title'}</h6>
+                        </a>
+                        <div class="d-flex justify-content-between align-items-center mt-1">
+                            <small class="text-muted">${article.source || 'Unknown source'}</small>
+                            <span class="badge ${getSentimentBadgeClass(article.sentiment)}">
+                                ${article.sentiment ? (article.sentiment).toFixed(2) : 'N/A'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            newsSection.appendChild(newsContainer);
         }
-
-        // Show results
-        results.classList.remove('d-none');
+        sentimentCardBody.appendChild(newsSection);
     }
 
-    // Helper function to format keys
-    function formatKey(key) {
-        return key.split('_')
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' ');
+    // --- Helper and State Management Functions ---
+    function formatKey(key) { return key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '); }
+
+    function formatValue(value) {
+        if (value === null || typeof value === 'undefined') return 'N/A';
+        if (typeof value !== 'number') return value;
+        return value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
-    // Helper function to format source
-    function formatSource(source) {
-        if (typeof source === 'string') return source;
-        if (source && source.name) return source.name;
-        return 'Unknown Source';
-    }
-
-    // Helper function to format date
-    function formatDate(dateString) {
-        if (!dateString) return 'Unknown date';
-        try {
-            const date = new Date(dateString);
-            return date.toLocaleDateString();
-        } catch {
-            return dateString;
+    function formatLargeNumber(value) {
+        if (value === null || typeof value === 'undefined') return 'N/A';
+        if (typeof value !== 'number') return value;
+        const crores = value / 10000000;
+        if (crores >= 1) {
+            return `₹ ${crores.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Cr`;
         }
+        return `₹ ${value.toLocaleString('en-IN')}`;
     }
 
-    // Helper function to get sentiment badge class
     function getSentimentBadgeClass(sentiment) {
-        if (sentiment >= 0.7) return 'bg-success';
-        if (sentiment >= 0.6) return 'bg-info';
-        if (sentiment >= 0.4) return 'bg-warning';
+        if (sentiment == null) return 'bg-secondary';
+        if (sentiment >= 0.65) return 'bg-success';
+        if (sentiment >= 0.45) return 'bg-warning';
         return 'bg-danger';
+    }
+
+    // app/static/js/script.js
+
+function displayHorizonResults(result) {
+    const { predictions } = result;
+    // This creates the full HTML table for the results.
+    let tableHtml = `
+        <h4 class="mb-3">Prediction Horizons</h4>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Timeframe</th>
+                        <th class="text-center">Prediction</th>
+                        <th class="text-center">Confidence</th>
+                        <th>Primary Basis</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    // Loop through each prediction (next_day, next_month, etc.)
+    for (const [key, value] of Object.entries(predictions)) {
+        const pred = value.prediction_percent;
+        const predClass = pred > 1 ? 'text-success' : pred < -1 ? 'text-danger' : 'text-secondary';
+        const predIcon = pred > 1 ? '▲' : pred < -1 ? '▼' : '▬';
+
+        tableHtml += `
+            <tr>
+                <td><strong>${formatKey(key)}</strong></td>
+                <td class="${predClass} text-center">
+                    <h5 class="mb-0">${predIcon} ${pred}%</h5>
+                </td>
+                <td class="text-center">${(value.confidence * 100).toFixed(0)}%</td>
+                <td><span class="badge bg-info text-dark">${value.basis}</span></td>
+            </tr>
+        `;
+    }
+
+    tableHtml += `</tbody></table></div>`;
+
+    // Display the generated table in the results container
+    resultsContainer.innerHTML = tableHtml;
+    resultsContainer.classList.remove('d-none');
+}
+
+    function setLoadingState(isLoading, text = '') {
+        loading.classList.toggle('d-none', !isLoading);
+        loadingText.textContent = text;
+    }
+
+    function resetUIState(isPrediction = false) {
+        errorAlert.classList.add('d-none');
+        successAlert.classList.add('d-none');
+        if (!isPrediction) {
+            companyData.classList.add('d-none');
+        }
+        resultsContainer.classList.add('d-none');
+    }
+
+    function showError(message) {
+        errorAlert.textContent = message;
+        errorAlert.classList.remove('d-none');
+        console.error(message);
+    }
+
+    function showSuccess(message) {
+        successAlert.textContent = message;
+        successAlert.classList.remove('d-none');
     }
 });
