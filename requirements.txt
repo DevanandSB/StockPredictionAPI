@@ -13,3 +13,5 @@ Jinja2
 python-multipart
 beautifulsoup4
 nsepy
+vaderSentiment
+googlesearch-python

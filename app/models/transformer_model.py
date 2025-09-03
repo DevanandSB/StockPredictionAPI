@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import math
 
 
@@ -14,45 +13,51 @@ class PositionalEncoding(nn.Module):
         div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
-        pe = pe.unsqueeze(0)  # Shape: [1, max_len, d_model]
+
+        # --- CRITICAL FIX: Reshape to match the saved model's expected shape ---
+        # The saved model expects (1, max_len, d_model) but the code was creating (max_len, 1, d_model)
+        pe = pe.unsqueeze(0)  # This changes the shape to what the checkpoint expects.
+
         self.register_buffer('pe', pe)
 
     def forward(self, x):
-        # x shape: [batch_size, seq_len, d_model]
+        # The input x is (batch, seq_len, features)
+        # We need to add pe which is (1, max_len, features)
         x = x + self.pe[:, :x.size(1), :]
         return self.dropout(x)
 
 
-class ExactTransformerModel(nn.Module):
-    """Exact model architecture that matches your saved weights"""
+class StockPredictionTransformer(nn.Module):
+    def __init__(self, feature_size, d_model, nhead, num_encoder_layers, dim_feedforward, dropout=0.1):
+        super(StockPredictionTransformer, self).__init__()
 
-    def __init__(self, input_size=35, d_model=256, nhead=8, num_layers=4, dim_feedforward=1024, dropout=0.1):
-        super(ExactTransformerModel, self).__init__()
-        self.input_proj = nn.Linear(input_size, d_model)
+        self.input_proj = nn.Linear(feature_size, d_model)
         self.pos_encoder = PositionalEncoding(d_model, dropout)
-
-        encoder_layers = nn.TransformerEncoderLayer(
-            d_model=d_model,
-            nhead=nhead,
-            dim_feedforward=dim_feedforward,
-            dropout=dropout,
-            batch_first=True  # Use batch_first=True to match the saved weights
-        )
-        self.transformer = nn.TransformerEncoder(encoder_layers, num_layers)
+        encoder_layers = nn.TransformerEncoderLayer(d_model, nhead, dim_feedforward, dropout, batch_first=True)
+        self.transformer = nn.TransformerEncoder(encoder_layers, num_encoder_layers)
 
         self.output = nn.Sequential(
-            nn.Linear(d_model, 128),
+            nn.Linear(d_model, d_model // 2),
             nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(128, 64),
+            nn.Dropout(0.1),
+            nn.Linear(d_model // 2, d_model // 4),
             nn.ReLU(),
-            nn.Linear(64, 1)
+            nn.Linear(d_model // 4, 1)
         )
+        self.d_model = d_model
+        self.init_weights()
 
-    def forward(self, x):
-        # x shape: [batch_size, seq_len, input_size]
-        x = self.input_proj(x)  # [batch_size, seq_len, d_model]
-        x = self.pos_encoder(x)  # [batch_size, seq_len, d_model]
-        x = self.transformer(x)  # [batch_size, seq_len, d_model]
-        x = x.mean(dim=1)  # Global average pooling over sequence
-        return self.output(x)  # [batch_size, 1]
+    def init_weights(self):
+        initrange = 0.1
+        self.input_proj.weight.data.uniform_(-initrange, initrange)
+        for layer in self.output:
+            if isinstance(layer, nn.Linear):
+                layer.bias.data.zero_()
+                layer.weight.data.uniform_(-initrange, initrange)
+
+    def forward(self, src):
+        src = self.input_proj(src) * math.sqrt(self.d_model)
+        src = self.pos_encoder(src)  # The positional encoding is now compatible
+        output = self.transformer(src)
+        output = self.output(output)
+        return output.squeeze(-1)

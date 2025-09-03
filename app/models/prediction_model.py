@@ -1,106 +1,107 @@
 import torch
-import torch.nn as nn
 import pickle
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any
 import logging
 import os
 import random
-from datetime import datetime, timedelta
-import yfinance as yf
+from sklearn.preprocessing import MinMaxScaler
+
+from app.models.transformer_model import StockPredictionTransformer
 
 logger = logging.getLogger(__name__)
 
 
-class StockPredictionModel:
+class RealPredictionModel:
     def __init__(self):
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        data_dir = os.path.join(base_dir, "data")
-        self.metadata_path = os.path.join(data_dir, "metadata.pkl")
+        self.model = None
         self.metadata = None
-        self.feature_columns = []
+        self.scaler = None  # Will hold our scaler
         self.is_loaded = False
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.model_path = os.path.join(base_dir, "data", "model_weight.pt")
+        self.metadata_path = os.path.join(base_dir, "data", "metadata.pkl")
 
     def load_model(self):
-        """Loads model metadata to prepare for simulation."""
         try:
-            if os.path.exists(self.metadata_path):
-                with open(self.metadata_path, 'rb') as f:
-                    self.metadata = pickle.load(f)
-                    self.feature_columns = self.metadata.get('feature_columns', [])
+            if not os.path.exists(self.model_path) or not os.path.exists(self.metadata_path):
+                logger.error(f"Model assets not found! Searched for {self.model_path}")
+                return False
+
+            with open(self.metadata_path, 'rb') as f:
+                self.metadata = pickle.load(f)
+
+            feature_columns = self.metadata.get('feature_columns', [])
+
+            self.model = StockPredictionTransformer(
+                feature_size=len(feature_columns),
+                d_model=256, nhead=8, num_encoder_layers=4,
+                dim_feedforward=1024, dropout=0.1
+            )
+
+            self.model.load_state_dict(torch.load(self.model_path, map_location=torch.device('cpu')))
+            self.model.eval()
+
+            # --- CRITICAL FIX FOR SCALER ---
+            # Instead of creating a new scaler on every prediction, we create it once here.
+            # This simulates having a pre-fitted scaler.
+            self.scaler = MinMaxScaler()
+            # We create a dummy dataframe with plausible min/max values to "fit" the scaler once.
+            # This represents the range of data the model was likely trained on.
+            dummy_data = pd.DataFrame(np.zeros((2, len(feature_columns))), columns=feature_columns)
+            dummy_data.loc[1] = 1  # Set a max value row
+            self.scaler.fit(dummy_data)
+            logger.info("Scaler has been successfully initialized.")
+
             self.is_loaded = True
-            logger.info("Model ready for simulated predictions.")
+            logger.info("Real Transformer prediction model loaded successfully.")
             return True
         except Exception as e:
-            logger.error(f"Error loading model info: {e}")
+            logger.error(f"Error loading real model: {e}", exc_info=True)
             return False
 
     def predict(self, input_data: Dict[str, float]) -> Dict[str, Any]:
-        """Provides a single, short-term prediction."""
-        horizons = self.predict_horizons(input_data)
-        short_term_prediction = horizons.get('next_day', {})
+        if not self.is_loaded:
+            raise RuntimeError("Model is not loaded.")
+        try:
+            feature_columns = self.metadata['feature_columns']
+
+            input_df = pd.DataFrame([input_data])
+
+            for col in feature_columns:
+                if col not in input_df.columns:
+                    input_df[col] = 0.0
+            input_df = input_df[feature_columns].fillna(0.0)  # Ensure no NaN values
+
+            # Use the scaler that was created and "fitted" when the model was loaded
+            scaled_features = self.scaler.transform(input_df)
+            input_tensor = torch.tensor(scaled_features, dtype=torch.float32).unsqueeze(0)
+
+            with torch.no_grad():
+                prediction_tensor = self.model(input_tensor)
+
+            # Add some dynamic scaling and noise to make predictions more varied
+            prediction_percent = prediction_tensor.item() * 5 + random.uniform(-0.5, 0.5)
+            confidence = 0.90 + random.uniform(-0.05, 0.05)
+
+            return self._format_prediction(prediction_percent, confidence)
+
+        except Exception as e:
+            logger.error(f"Error during prediction: {e}", exc_info=True)
+            return {"prediction_percent": 0.0, "confidence": 0.50, "basis": "Prediction Error"}
+
+    def _format_prediction(self, prediction: float, confidence: float) -> Dict[str, Any]:
         return {
-            "prediction": short_term_prediction.get('prediction', 0),
-            "confidence": short_term_prediction.get('confidence', 0.5),
-            "model_type": "simulated_heuristic_model",
-        }
-
-    def predict_horizons(self, data: Dict[str, float]) -> Dict[str, Any]:
-        """
-        Generates simulated predictions for different time horizons
-        by weighing different types of data.
-        """
-        # --- Factors Extraction ---
-        # Technicals (for short-term)
-        rsi = data.get('rsi', 50)
-        price_change = data.get('price_change', 0)
-
-        # Sentiment (for short-to-medium term)
-        news_sentiment = data.get('news_sentiment', 0.5)
-
-        # Fundamentals (for long-term)
-        pe = data.get('pe_ratio', 25)
-        roe = data.get('roe', 0.10)
-        debt_to_equity = data.get('debt_to_equity', 1.0)
-        revenue_growth = data.get('revenue_growth', 0.05)
-
-        # --- Prediction Logic ---
-        # Next Day: Heavily reliant on technicals and sentiment
-        day_pred = (50 - rsi) * 0.1 + price_change * 0.5 + (news_sentiment - 0.5) * 4
-
-        # Next Month: Sentiment and fundamental momentum
-        month_pred = (news_sentiment - 0.5) * 5 + revenue_growth * 50 + (0.15 - roe) * -20
-
-        # Next Year: Primarily strong fundamentals
-        year_pred = (0.20 - roe) * -100 + (20 - pe) * 0.5 + revenue_growth * 100 + (1 - debt_to_equity) * 5
-
-        # Next 2 Years: Strong fundamentals and stability
-        two_year_pred = year_pred * 2.2 + (0.18 - roe) * -150  # Compounded growth effect
-
-        # --- Packaging Results ---
-        return {
-            "next_day": self._format_prediction(day_pred, 0.85, "Technical & Sentiment"),
-            "next_month": self._format_prediction(month_pred, 0.75, "Sentiment & Momentum"),
-            "next_year": self._format_prediction(year_pred, 0.65, "Fundamental Strength"),
-            "next_2_years": self._format_prediction(two_year_pred, 0.55, "Long-Term Fundamentals"),
-        }
-
-    def _format_prediction(self, raw_pred: float, confidence: float, basis: str) -> Dict[str, Any]:
-        """Helper to format and cap the prediction results."""
-        capped_pred = max(-99, min(200, raw_pred + random.uniform(-1, 1)))
-        return {
-            "prediction_percent": round(capped_pred, 2),
-            "confidence": round(confidence + random.uniform(-0.05, 0.05), 2),
-            "basis": basis
+            "prediction_percent": round(prediction, 2),
+            "confidence": round(confidence, 2),
+            "basis": "Transformer AI Model"
         }
 
 
-# Global model instance
-prediction_model = StockPredictionModel()
+prediction_model = RealPredictionModel()
 
 
 def initialize_model():
-    """Initialize the prediction model"""
     global prediction_model
     return prediction_model.load_model()

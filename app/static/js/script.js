@@ -1,221 +1,260 @@
-// app/static/js/script.js
-
-document.addEventListener('DOMContentLoaded', function() {
-    const companySelect = document.getElementById('company-select');
-    const predictBtn = document.getElementById('predict-btn');
+document.addEventListener('DOMContentLoaded', function () {
+    // --- Element References ---
+    const companySearch = document.getElementById('company-search');
+    const searchResults = document.getElementById('search-results');
+    const analyzeBtn = document.getElementById('analyze-btn');
     const loading = document.getElementById('loading');
-    const loadingText = document.getElementById('loading-text');
-    const errorAlert = document.getElementById('error-alert');
-    const successAlert = document.getElementById('success-alert');
+    const companyDataContainer = document.getElementById('company-data');
     const resultsContainer = document.getElementById('results');
-    const companyData = document.getElementById('company-data');
+    const errorAlert = document.getElementById('error-alert');
 
-    let currentCompanyData = null;
+    let selectedSymbol = null;
+    let companies = [];
+
+    // --- Dynamic Company Loading ---
+    async function loadCompanies() {
+        try {
+            const response = await fetch('/api/companies');
+            if (!response.ok) throw new Error('Failed to load company list.');
+            companies = await response.json();
+        } catch (error) {
+            showError("Could not load company list.");
+        }
+    }
 
     // --- Event Listeners ---
-    companySelect.addEventListener('change', handleCompanySelect);
-    predictBtn.addEventListener('click', handlePrediction);
+    companySearch.addEventListener('input', handleSearchInput);
+    companySearch.addEventListener('focus', handleSearchInput);
+
+    // CRITICAL FIX: The event listener is attached directly and uses the global `selectedSymbol`.
+    // This structure is more robust and prevents the issues you were seeing.
+    analyzeBtn.addEventListener('click', () => {
+        if (selectedSymbol) {
+            handleAnalysis(selectedSymbol);
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!companySearch.contains(e.target)) {
+            searchResults.classList.remove('active');
+        }
+    });
 
     // --- Handlers ---
-    async function handleCompanySelect() {
-        const symbol = this.value;
-        resetUIState();
-        if (!symbol) {
-            predictBtn.disabled = true;
-            return;
+    function handleSearchInput() {
+        const query = companySearch.value.toLowerCase();
+        searchResults.innerHTML = '';
+
+        const filteredCompanies = companies.filter(company =>
+            company.name.toLowerCase().includes(query) ||
+            company.symbol.toLowerCase().includes(query)
+        );
+
+        if (filteredCompanies.length > 0) {
+            filteredCompanies.forEach(company => {
+                const item = document.createElement('div');
+                item.className = 'search-result-item';
+                item.textContent = company.name;
+
+                item.onclick = () => {
+                    companySearch.value = company.name;
+                    selectedSymbol = company.symbol; // Set the global variable
+                    searchResults.classList.remove('active');
+                    handleCompanySelect(selectedSymbol);
+                };
+                searchResults.appendChild(item);
+            });
+            searchResults.classList.add('active');
+        } else {
+            searchResults.classList.remove('active');
         }
+    }
+
+    async function handleCompanySelect(symbol) {
+        resetUI(true);
         setLoadingState(true, `Fetching data for ${symbol}...`);
         try {
             const response = await fetch(`/api/company/${symbol}`);
             if (!response.ok) throw new Error((await response.json()).detail || 'Failed to fetch company data');
             const data = await response.json();
-            currentCompanyData = data;
             displayCompanyData(data);
-            companyData.classList.remove('d-none');
-            predictBtn.disabled = false;
+            companyDataContainer.classList.remove('d-none');
+            analyzeBtn.disabled = false;
         } catch (error) {
-            showError('Data fetch error: ' + error.message);
+            showError(error.message);
         } finally {
             setLoadingState(false);
         }
     }
 
-    async function handlePrediction() {
-        if (!currentCompanyData) return;
-        resetUIState(true);
-        setLoadingState(true, 'Analyzing market data and making predictions...');
+    async function handleAnalysis(symbol) {
+        resultsContainer.classList.add('d-none');
+        setLoadingState(true, 'Running AI analysis...');
+        analyzeBtn.disabled = true;
         try {
-            const response = await fetch(`/api/predict-horizons/${companySelect.value}`, { method: 'POST' });
-            if (!response.ok) throw new Error((await response.json()).detail || 'Prediction failed');
+            const response = await fetch(`/api/predict/${symbol}`, { method: 'POST' });
+            if (!response.ok) throw new Error((await response.json()).detail || 'Analysis failed');
             const result = await response.json();
-            displayHorizonResults(result);
-            showSuccess(`Predictions generated for ${currentCompanyData.company_name || companySelect.value}!`);
+            displayAnalysisResults(result.prediction);
+            resultsContainer.classList.remove('d-none');
         } catch (error) {
-            showError('Prediction error: ' + error.message);
+            showError(error.message);
         } finally {
             setLoadingState(false);
+            analyzeBtn.disabled = false;
         }
     }
 
-    // --- UI Update Functions ---
+    // --- UI Update & Helper Functions ---
     function displayCompanyData(data) {
-        document.querySelector('.fundamental-data').innerHTML = renderKeyValuePairs(data.fundamentals);
-        document.querySelector('.technical-data').innerHTML = renderKeyValuePairs(data.technicals);
-        document.querySelector('.sentiment-data').innerHTML = renderKeyValuePairs(data.sentiment, true);
-        displayNewsArticles(data.sentiment?.articles || []);
+        displayKeyMetrics(data.fundamentals, data.technicals);
+        displayFundamentals(data.fundamentals);
+        displayTechnicals(data.technicals);
+        displaySentiment(data.sentiment);
+        displayNews(data.sentiment?.articles || []);
     }
 
-    function renderKeyValuePairs(data, isSentiment = false) {
-        if (!data || Object.keys(data).length === 0) return '<p class="text-muted small text-center">Data not available.</p>';
-        return Object.entries(data)
-            .filter(([key]) => key !== 'articles')
-            .map(([key, value]) => {
-                const keyLower = key.toLowerCase();
-                let displayValue = (keyLower.includes('cap') || keyLower.includes('volume'))
-                    ? formatLargeNumber(value)
-                    : formatValue(value);
-
-                if (isSentiment && (key.includes('sentiment') || key.includes('rating'))) {
-                    displayValue = `<span class="badge ${getSentimentBadgeClass(value)}">${displayValue}</span>`;
-                }
-                return `<div class="mb-2"><strong>${formatKey(key)}:</strong><span class="float-end">${displayValue}</span></div>`;
-            }).join('');
+    function displayKeyMetrics(fundamentals, technicals) {
+        const metrics = [
+            { icon: 'fas fa-money-bill-wave', value: `₹${formatValue(technicals.current_price)}`, label: 'Current Price' },
+            { icon: 'fas fa-landmark', value: formatLargeNumber(fundamentals.market_cap), label: 'Market Cap' },
+            { icon: 'fas fa-chart-pie', value: formatValue(fundamentals.pe_ratio), label: 'P/E Ratio' },
+            { icon: 'fas fa-percentage', value: `${formatValue(fundamentals.roe)}%`, label: 'ROE' },
+            { icon: 'fas fa-hand-holding-usd', value: formatValue(fundamentals.eps), label: 'EPS' },
+            { icon: 'fas fa-balance-scale', value: formatValue(fundamentals.debt_to_equity), label: 'Debt/Equity' }
+        ];
+        document.getElementById('key-metrics').innerHTML = metrics.map(m => `
+            <div class="col-6 col-md-4 col-lg-2 metric-card">
+                <div class="metric-icon"><i class="${m.icon}"></i></div>
+                <div class="metric-value">${m.value || 'N/A'}</div>
+                <div class="metric-label">${m.label}</div>
+            </div>`).join('');
     }
 
-    /**
-     * THIS IS THE CORRECTED FUNCTION FOR DISPLAYING NEWS
-     */
-    function displayNewsArticles(articles) {
-        const sentimentCardBody = document.querySelector('.sentiment-data')?.parentElement;
-        if (!sentimentCardBody) return;
+    function createDataRow(key, value, status = '') {
+        return `<div class="data-row" style="padding: 0.5rem 0;"><span class="key">${key}</span><strong class="value ${status}">${value || 'N/A'}</strong></div>`;
+    }
 
-        let newsSection = sentimentCardBody.querySelector('#news-section');
-        if (newsSection) newsSection.remove();
+    function displayFundamentals(d) {
+        const container = document.getElementById('fundamentals-container');
+        container.innerHTML = [
+            createDataRow('P/E Ratio', formatValue(d.pe_ratio)),
+            createDataRow('Book Value', `₹${formatValue(d.book_value)}`),
+            createDataRow('Dividend Yield', `${formatValue(d.dividend_yield)}%`),
+            createDataRow('ROE', `${formatValue(d.roe)}%`),
+            createDataRow('ROCE', `${formatValue(d.roce)}%`),
+            createDataRow('EPS', `₹${formatValue(d.eps)}`),
+            createDataRow('Debt to Equity', formatValue(d.debt_to_equity)),
+        ].join('');
+    }
 
-        newsSection = document.createElement('div');
-        newsSection.id = 'news-section';
+    function displayTechnicals(d) {
+        const container = document.getElementById('technicals-container');
+        const rsiStatus = d.rsi > 70 ? 'negative' : d.rsi < 30 ? 'positive' : '';
+        const trend = d.current_price > d.sma_200 ? 'positive' : 'negative';
+        container.innerHTML = [
+            createDataRow('RSI', `${formatValue(d.rsi)} <small>(${(rsiStatus || 'neutral')})</small>`, rsiStatus),
+            createDataRow('MACD', formatValue(d.macd)),
+            createDataRow('50-Day MA', `₹${formatValue(d.sma_50)}`),
+            createDataRow('200-Day MA', `₹${formatValue(d.sma_200)}`, trend),
+            createDataRow('52-Week High', `₹${formatValue(d['52_week_high'])}`),
+            createDataRow('52-Week Low', `₹${formatValue(d['52_week_low'])}`),
+            createDataRow('Volume', formatLargeNumber(d.volume, false))
+        ].join('');
+    }
 
-        const newsContainer = document.createElement('div');
-        newsContainer.id = 'news-container';
-
-        if (!articles || articles.length === 0) {
-            newsSection.innerHTML = `<hr><p class="text-center text-muted small mt-3">No recent news articles found.</p>`;
-        } else {
-            newsSection.innerHTML = `<hr><h6 class="mb-3 mt-3">Relevant News</h6>`;
-            // This .map() logic is now correctly implemented
-            newsContainer.innerHTML = articles.map(article => `
-                <div class="card mb-2">
-                    <div class="card-body p-2">
-                        <a href="${article.url}" target="_blank" rel="noopener noreferrer" class="text-dark text-decoration-none">
-                            <h6 class="card-title" style="font-size: 0.85rem; margin-bottom: 0.25rem;">${article.title || 'No title'}</h6>
-                        </a>
-                        <div class="d-flex justify-content-between align-items-center mt-1">
-                            <small class="text-muted">${article.source || 'Unknown source'}</small>
-                            <span class="badge ${getSentimentBadgeClass(article.sentiment)}">
-                                ${article.sentiment ? (article.sentiment).toFixed(2) : 'N/A'}
-                            </span>
+    function displaySentiment(s) {
+        const container = document.getElementById('sentiment-container');
+        if (!s) { container.innerHTML = '<p class="text-muted text-center">Sentiment data not available.</p>'; return; }
+        const sentimentItems = [
+            { label: 'News Sentiment', value: s.news_sentiment, icon: 'fa-newspaper' },
+            { label: 'Social Media Buzz', value: s.social_media_sentiment, icon: 'fa-hashtag' },
+            { label: 'Analyst Rating', value: s.analyst_rating / 10, icon: 'fa-user-tie' }
+        ];
+        container.innerHTML = sentimentItems.map(item => {
+            const score = (item.value * 100).toFixed(0);
+            const status = score >= 65 ? 'positive' : score >= 40 ? 'neutral' : 'negative';
+            const displayValue = item.label === 'Analyst Rating' ? `${(item.value*10).toFixed(1)}/10` : `${score}%`;
+            return `
+                <div class="sentiment-item">
+                    <div class="sentiment-icon ${status}"><i class="fas ${item.icon}"></i></div>
+                    <div class="sentiment-details">
+                        <div class="sentiment-label">
+                            ${item.label}
+                            <strong class="float-end ${status}">${displayValue}</strong>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar bg-${status}" role="progressbar" style="width: ${score}%"></div>
                         </div>
                     </div>
-                </div>
-            `).join('');
-            newsSection.appendChild(newsContainer);
+                </div>`;
+        }).join('');
+    }
+
+    function displayNews(articles) {
+        const container = document.getElementById('news-container');
+        if (!articles || articles.length === 0) {
+            container.innerHTML = '<p class="text-muted text-center">No important news found.</p>'; return;
         }
-        sentimentCardBody.appendChild(newsSection);
+        container.innerHTML = articles.map(a => {
+            const sentiment = a.sentiment || 0.5;
+            const icon = sentiment >= 0.6 ? 'fa-arrow-trend-up positive' : sentiment >= 0.4 ? 'fa-minus neutral' : 'fa-arrow-trend-down negative';
+            const sourceName = a.source.replace('www.', '').split('.')[0];
+            return `
+                <a href="${a.url}" target="_blank" class="news-card">
+                    <div class="news-sentiment-icon"><i class="fas ${icon}"></i></div>
+                    <div>
+                        <div class="news-title">${a.title || 'No title'}</div>
+                        <div class="news-meta">
+                            <strong>${sourceName.toUpperCase()}</strong> - ${new Date(a.publishedAt).toLocaleDateString()}
+                        </div>
+                    </div>
+                </a>`;
+        }).join('');
     }
 
-    // --- Helper and State Management Functions ---
-    function formatKey(key) { return key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '); }
-
-    function formatValue(value) {
-        if (value === null || typeof value === 'undefined') return 'N/A';
-        if (typeof value !== 'number') return value;
-        return value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    function displayAnalysisResults(prediction) {
+        let resultHtml = `<div class="card"><div class="card-header"><h5 class="mb-0"><i class="fas fa-bullseye me-2"></i>AI Prediction</h5></div><div class="card-body">`;
+        const pred = prediction.prediction_percent;
+        const predClass = pred > 0.5 ? 'positive' : pred < -0.5 ? 'negative' : 'neutral';
+        const predIcon = pred > 0.5 ? 'fa-arrow-up' : pred < -0.5 ? 'fa-arrow-down' : 'fa-minus';
+        resultHtml += `
+            <div class="text-center">
+                <h4 class="mb-1">Next Day Prediction</h4>
+                <h1 class="display-4 fw-bold ${predClass}">
+                    <i class="fas ${predIcon} me-2"></i>${pred.toFixed(2)}%
+                </h1>
+                <p class="mb-0 text-muted">Confidence: <strong>${(prediction.confidence * 100).toFixed(0)}%</strong></p>
+                <span class="badge bg-primary fw-normal mt-2">${prediction.basis}</span>
+            </div>`;
+        resultHtml += '</div></div>';
+        resultsContainer.innerHTML = resultHtml;
     }
 
-    function formatLargeNumber(value) {
-        if (value === null || typeof value === 'undefined') return 'N/A';
-        if (typeof value !== 'number') return value;
-        const crores = value / 10000000;
-        if (crores >= 1) {
-            return `₹ ${crores.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Cr`;
-        }
-        return `₹ ${value.toLocaleString('en-IN')}`;
-    }
-
-    function getSentimentBadgeClass(sentiment) {
-        if (sentiment == null) return 'bg-secondary';
-        if (sentiment >= 0.65) return 'bg-success';
-        if (sentiment >= 0.45) return 'bg-warning';
-        return 'bg-danger';
-    }
-
-    // app/static/js/script.js
-
-function displayHorizonResults(result) {
-    const { predictions } = result;
-    // This creates the full HTML table for the results.
-    let tableHtml = `
-        <h4 class="mb-3">Prediction Horizons</h4>
-        <div class="table-responsive">
-            <table class="table table-hover align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th>Timeframe</th>
-                        <th class="text-center">Prediction</th>
-                        <th class="text-center">Confidence</th>
-                        <th>Primary Basis</th>
-                    </tr>
-                </thead>
-                <tbody>
-    `;
-
-    // Loop through each prediction (next_day, next_month, etc.)
-    for (const [key, value] of Object.entries(predictions)) {
-        const pred = value.prediction_percent;
-        const predClass = pred > 1 ? 'text-success' : pred < -1 ? 'text-danger' : 'text-secondary';
-        const predIcon = pred > 1 ? '▲' : pred < -1 ? '▼' : '▬';
-
-        tableHtml += `
-            <tr>
-                <td><strong>${formatKey(key)}</strong></td>
-                <td class="${predClass} text-center">
-                    <h5 class="mb-0">${predIcon} ${pred}%</h5>
-                </td>
-                <td class="text-center">${(value.confidence * 100).toFixed(0)}%</td>
-                <td><span class="badge bg-info text-dark">${value.basis}</span></td>
-            </tr>
-        `;
-    }
-
-    tableHtml += `</tbody></table></div>`;
-
-    // Display the generated table in the results container
-    resultsContainer.innerHTML = tableHtml;
-    resultsContainer.classList.remove('d-none');
-}
-
-    function setLoadingState(isLoading, text = '') {
+    const setLoadingState = (isLoading, text) => {
         loading.classList.toggle('d-none', !isLoading);
-        loadingText.textContent = text;
-    }
-
-    function resetUIState(isPrediction = false) {
+        if(text) document.getElementById('loading-text').textContent = text;
+    };
+    const resetUI = (isSearching = false) => {
+        if (!isSearching) companySearch.value = '';
+        analyzeBtn.disabled = true;
         errorAlert.classList.add('d-none');
-        successAlert.classList.add('d-none');
-        if (!isPrediction) {
-            companyData.classList.add('d-none');
-        }
+        companyDataContainer.classList.add('d-none');
         resultsContainer.classList.add('d-none');
-    }
-
-    function showError(message) {
-        errorAlert.textContent = message;
+    };
+    const showError = (message) => {
+        errorAlert.textContent = `Error: ${message}`;
         errorAlert.classList.remove('d-none');
-        console.error(message);
-    }
+    };
+    const formatValue = (val) => val != null ? val.toFixed(2) : 'N/A';
+    const formatLargeNumber = (num, currency = true) => {
+        if (num == null) return 'N/A';
+        const prefix = currency ? '₹' : '';
+        if (num >= 1e7) return `${prefix}${(num / 1e7).toFixed(2)} Cr`;
+        if (num >= 1e5) return `${prefix}${(num / 1e5).toFixed(2)} L`;
+        return `${prefix}${parseInt(num).toLocaleString('en-IN')}`;
+    };
 
-    function showSuccess(message) {
-        successAlert.textContent = message;
-        successAlert.classList.remove('d-none');
-    }
+    // --- Initializer ---
+    loadCompanies();
 });
