@@ -1,10 +1,11 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 import logging
 import json
 import os
+import asyncio
 from typing import Dict, List
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -29,6 +30,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 def load_companies() -> List[Dict[str, str]]:
     try:
         companies_path = os.path.join(os.path.dirname(__file__), "data", "companies.json")
@@ -38,22 +40,11 @@ def load_companies() -> List[Dict[str, str]]:
         logger.error(f"Error loading companies: {e}")
         return []
 
-# --- NEW ENDPOINT ---
+
 @app.get("/api/companies", tags=["Data"])
 async def get_companies():
     """Returns the list of companies from the JSON file."""
     return load_companies()
-
-
-def load_companies() -> List[Dict[str, str]]:
-    # ... (no change to this function)
-    try:
-        companies_path = os.path.join(os.path.dirname(__file__), "data", "companies.json")
-        with open(companies_path, 'r') as f:
-            return json.load(f)
-    except Exception as e:
-        logger.error(f"Error loading companies: {e}")
-        return []
 
 
 @app.on_event("startup")
@@ -65,19 +56,16 @@ async def startup_event():
 
 @app.get("/", response_class=HTMLResponse, tags=["Web Interface"])
 async def read_root(request: Request):
-    # ... (no change to this function)
     return templates.TemplateResponse("index.html", {"request": request, "companies": load_companies()})
 
 
 @app.get("/health", response_model=HealthCheck, tags=["Health"])
 async def health_check():
-    # ... (no change to this function)
     return HealthCheck(status="healthy", model_loaded=prediction_model.is_loaded)
 
 
 @app.get("/api/company/{symbol}", tags=["Data"])
 async def get_company_data(symbol: str):
-    # ... (no change to this function)
     try:
         companies = load_companies()
         company_name = next((c["name"] for c in companies if c["symbol"] == symbol), symbol)
@@ -91,34 +79,92 @@ async def get_company_data(symbol: str):
         raise HTTPException(status_code=500, detail=f"Error fetching data: {e}")
 
 
-# --- UPDATED PREDICTION ENDPOINT ---
+@app.get("/api/predict-stream/{symbol}", tags=["Prediction"])
+async def predict_stock_stream(symbol: str):
+    """
+    Fetches data and streams prediction progress using Server-Sent Events.
+    """
+    if not prediction_model.is_loaded:
+        raise HTTPException(status_code=503, detail="Model not loaded or failed to initialize.")
+
+    async def event_stream():
+        try:
+            logger.info(f"Starting data fetch for {symbol} stream...")
+            yield f"data: {json.dumps({'status': 'Fetching company data...', 'progress': 0})}\n\n"
+            await asyncio.sleep(0.1)
+
+            companies = load_companies()
+            company_name = next((c["name"] for c in companies if c["symbol"] == symbol), symbol)
+
+            # Fetch all necessary data
+            fundamentals = data_fetcher.get_stock_fundamentals(symbol)
+            technicals = data_fetcher.get_technical_indicators(symbol)
+            sentiment = data_fetcher.get_sentiment_data(symbol, company_name)
+
+            # **CRITICAL FIX:** Combine all data into a single dictionary and get the current price.
+            # Then, pass the `symbol` string and the `all_data` dictionary separately to the prediction function.
+            all_data = {
+                "symbol": symbol,
+                "company_name": company_name,
+                **fundamentals,
+                **technicals,
+                **sentiment
+            }
+            current_price = technicals.get('current_price', 0)
+
+            logger.info(f"Starting prediction stream for {symbol}...")
+            async for progress_update in prediction_model.predict_stream(all_data, current_price):
+                yield f"data: {json.dumps(progress_update)}\n\n"
+                await asyncio.sleep(0.02)
+
+        except Exception as e:
+            logger.error(f"Error in prediction stream for {symbol}: {e}", exc_info=True)
+            error_message = json.dumps({"error": str(e)})
+            yield f"data: {error_message}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
 @app.post("/api/predict/{symbol}", tags=["Prediction"])
 async def predict_stock_real(symbol: str):
     """
     Fetch data and make a prediction using the REAL Transformer AI model.
     """
+    logger.info(f"Received prediction request for {symbol}")
     if not prediction_model.is_loaded:
         raise HTTPException(status_code=503, detail="Model not loaded or failed to initialize.")
 
     try:
-        # Fetch all required data points
+        companies = load_companies()
+        company_name = next((c["name"] for c in companies if c["symbol"] == symbol), symbol)
+
         fundamentals = data_fetcher.get_stock_fundamentals(symbol)
         technicals = data_fetcher.get_technical_indicators(symbol)
+        sentiment = data_fetcher.get_sentiment_data(symbol, company_name)
 
-        # Combine data into a single dictionary for the model
-        all_data = {**fundamentals, **technicals}
+        all_data = {**fundamentals, **technicals, **sentiment}
+        current_price = technicals.get('current_price', 0)
 
-        # Make the real prediction
-        result = prediction_model.predict(all_data)
+        # This is a non-streaming endpoint, so we await the final result of the simulation
+        final_result = None
+        async for update in prediction_model.predict_stream(all_data, current_price):
+            if update.get("status") == "Done":
+                final_result = update.get("result")
 
-        return {
-            "prediction": result,
-            "symbol": symbol,
-            "data_sources": {
-                "fundamentals": "Screener.in",
-                "technicals": "Yahoo Finance"
+        if final_result:
+            logger.info(f"Successfully generated prediction for {symbol}")
+            return {
+                "prediction": final_result,
+                "symbol": symbol,
+                "data_sources": {
+                    "fundamentals": "Screener.in",
+                    "technicals": "Yahoo Finance",
+                    "sentiment": "Custom News Analyzer"
+                }
             }
-        }
+        else:
+            raise HTTPException(status_code=500, detail="Prediction failed to complete.")
+
     except Exception as e:
         logger.error(f"Real prediction error for {symbol}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

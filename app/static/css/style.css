@@ -89,8 +89,6 @@ body {
 .positive { color: var(--success-color); }
 .negative { color: var(--danger-color); }
 .neutral { color: var(--warning-color); }
-
-/* --- UPDATED SENTIMENT STYLES --- */
 .sentiment-item {
     display: flex;
     align-items: center;
@@ -126,8 +124,6 @@ body {
 .progress-bar.bg-positive { background-color: var(--success-color); }
 .progress-bar.bg-negative { background-color: var(--danger-color); }
 .progress-bar.bg-neutral { background-color: var(--warning-color); }
-
-/* (Search styles remain the same) */
 .search-container { position: relative; }
 .search-results-dropdown {
     position: absolute;
@@ -152,3 +148,33 @@ body {
 }
 .search-result-item:hover { background-color: #f0f2f5; }
 .search-result-item:last-child { border-bottom: none; }
+.prediction-card {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+.prediction-card .horizon {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--primary-color);
+}
+.prediction-card .range {
+    font-size: 1.25rem;
+    font-weight: 500;
+}
+.prediction-card .expected-price {
+    font-size: 0.85rem;
+    margin: 0.25rem 0;
+}
+.prediction-card .percentage-range {
+    font-size: 1rem;
+    font-weight: 500;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #e2e8f0;
+}

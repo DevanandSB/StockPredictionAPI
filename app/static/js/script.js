@@ -3,13 +3,18 @@ document.addEventListener('DOMContentLoaded', function () {
     const companySearch = document.getElementById('company-search');
     const searchResults = document.getElementById('search-results');
     const analyzeBtn = document.getElementById('analyze-btn');
-    const loading = document.getElementById('loading');
     const companyDataContainer = document.getElementById('company-data');
     const resultsContainer = document.getElementById('results');
     const errorAlert = document.getElementById('error-alert');
 
+    // Modal References
+    const progressModal = new bootstrap.Modal(document.getElementById('progressModal'));
+    const progressStatusText = document.getElementById('progress-status-text');
+    const progressBar = document.getElementById('progress-bar');
+
     let selectedSymbol = null;
     let companies = [];
+    let eventSource = null;
 
     // --- Dynamic Company Loading ---
     async function loadCompanies() {
@@ -25,15 +30,11 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- Event Listeners ---
     companySearch.addEventListener('input', handleSearchInput);
     companySearch.addEventListener('focus', handleSearchInput);
-
-    // CRITICAL FIX: The event listener is attached directly and uses the global `selectedSymbol`.
-    // This structure is more robust and prevents the issues you were seeing.
     analyzeBtn.addEventListener('click', () => {
         if (selectedSymbol) {
             handleAnalysis(selectedSymbol);
         }
     });
-
     document.addEventListener('click', (e) => {
         if (!companySearch.contains(e.target)) {
             searchResults.classList.remove('active');
@@ -44,7 +45,6 @@ document.addEventListener('DOMContentLoaded', function () {
     function handleSearchInput() {
         const query = companySearch.value.toLowerCase();
         searchResults.innerHTML = '';
-
         const filteredCompanies = companies.filter(company =>
             company.name.toLowerCase().includes(query) ||
             company.symbol.toLowerCase().includes(query)
@@ -55,10 +55,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 const item = document.createElement('div');
                 item.className = 'search-result-item';
                 item.textContent = company.name;
-
                 item.onclick = () => {
                     companySearch.value = company.name;
-                    selectedSymbol = company.symbol; // Set the global variable
+                    selectedSymbol = company.symbol;
                     searchResults.classList.remove('active');
                     handleCompanySelect(selectedSymbol);
                 };
@@ -72,7 +71,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     async function handleCompanySelect(symbol) {
         resetUI(true);
-        setLoadingState(true, `Fetching data for ${symbol}...`);
+        updateProgress(0, `Fetching data for ${symbol}...`);
+        progressModal.show();
         try {
             const response = await fetch(`/api/company/${symbol}`);
             if (!response.ok) throw new Error((await response.json()).detail || 'Failed to fetch company data');
@@ -83,29 +83,52 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (error) {
             showError(error.message);
         } finally {
-            setLoadingState(false);
+            progressModal.hide();
         }
     }
 
-    async function handleAnalysis(symbol) {
+    function handleAnalysis(symbol) {
         resultsContainer.classList.add('d-none');
-        setLoadingState(true, 'Running AI analysis...');
         analyzeBtn.disabled = true;
-        try {
-            const response = await fetch(`/api/predict/${symbol}`, { method: 'POST' });
-            if (!response.ok) throw new Error((await response.json()).detail || 'Analysis failed');
-            const result = await response.json();
-            displayAnalysisResults(result.prediction);
-            resultsContainer.classList.remove('d-none');
-        } catch (error) {
-            showError(error.message);
-        } finally {
-            setLoadingState(false);
-            analyzeBtn.disabled = false;
+        updateProgress(0, 'Initializing Analysis...');
+        progressModal.show();
+
+        if (eventSource) {
+            eventSource.close();
         }
+
+        eventSource = new EventSource(`/api/predict-stream/${symbol}`);
+
+        eventSource.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+
+            if (data.error) {
+                showError(data.error);
+                eventSource.close();
+                progressModal.hide();
+                analyzeBtn.disabled = false;
+                return;
+            }
+
+            updateProgress(data.progress, data.status);
+
+            if (data.status === "Done") {
+                displayAnalysisResults(data.result);
+                resultsContainer.classList.remove('d-none');
+                eventSource.close();
+                setTimeout(() => progressModal.hide(), 500);
+                analyzeBtn.disabled = false;
+            }
+        };
+
+        eventSource.onerror = function(err) {
+            showError("Connection to the server was lost during analysis.");
+            eventSource.close();
+            progressModal.hide();
+            analyzeBtn.disabled = false;
+        };
     }
 
-    // --- UI Update & Helper Functions ---
     function displayCompanyData(data) {
         displayKeyMetrics(data.fundamentals, data.technicals);
         displayFundamentals(data.fundamentals);
@@ -132,7 +155,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function createDataRow(key, value, status = '') {
-        return `<div class="data-row" style="padding: 0.5rem 0;"><span class="key">${key}</span><strong class="value ${status}">${value || 'N/A'}</strong></div>`;
+        return `<div class="data-row"><span class="key">${key}</span><strong class="value ${status}">${value || 'N/A'}</strong></div>`;
     }
 
     function displayFundamentals(d) {
@@ -214,27 +237,53 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function displayAnalysisResults(prediction) {
-        let resultHtml = `<div class="card"><div class="card-header"><h5 class="mb-0"><i class="fas fa-bullseye me-2"></i>AI Prediction</h5></div><div class="card-body">`;
-        const pred = prediction.prediction_percent;
-        const predClass = pred > 0.5 ? 'positive' : pred < -0.5 ? 'negative' : 'neutral';
-        const predIcon = pred > 0.5 ? 'fa-arrow-up' : pred < -0.5 ? 'fa-arrow-down' : 'fa-minus';
-        resultHtml += `
-            <div class="text-center">
-                <h4 class="mb-1">Next Day Prediction</h4>
-                <h1 class="display-4 fw-bold ${predClass}">
-                    <i class="fas ${predIcon} me-2"></i>${pred.toFixed(2)}%
-                </h1>
-                <p class="mb-0 text-muted">Confidence: <strong>${(prediction.confidence * 100).toFixed(0)}%</strong></p>
-                <span class="badge bg-primary fw-normal mt-2">${prediction.basis}</span>
-            </div>`;
-        resultHtml += '</div></div>';
+        const formatPercent = (p) => {
+            const sign = p > 0 ? '+' : '';
+            const colorClass = p > 0 ? 'positive' : p < 0 ? 'negative' : 'neutral';
+            return `<strong class="${colorClass}">${sign}${p}%</strong>`;
+        };
+
+        let resultHtml = `
+            <div class="card">
+                <div class="card-header"><h5 class="mb-0"><i class="fas fa-bullseye me-2"></i>AI Prediction</h5></div>
+                <div class="card-body">
+                    <p class="text-muted text-center mb-4">
+                        ${prediction.basis} &mdash; Current Price: <strong>₹${prediction.current_price}</strong>
+                    </p>
+                    <div class="row">
+        `;
+        const orderedHorizons = [
+            "Next Day", "Next Week", "Next 15 Days", "Next 30 Days",
+            "Next 3 Months", "Next 6 Months", "Next Year"
+        ];
+        for (const horizon of orderedHorizons) {
+            if (prediction.predictions[horizon]) {
+                const pred = prediction.predictions[horizon];
+                resultHtml += `
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="prediction-card h-100">
+                            <div class="horizon">${horizon}</div>
+                            <div class="range">₹${pred.lower_bound} – ₹${pred.upper_bound}</div>
+                            <div class="expected-price text-muted">Expected: ₹${pred.expected_price}</div>
+                            <div class="percentage-range">
+                                ${formatPercent(pred.lower_change_percent)} to ${formatPercent(pred.upper_change_percent)}
+                            </div>
+                        </div>
+                    </div>`;
+            }
+        }
+        resultHtml += '</div></div></div>';
         resultsContainer.innerHTML = resultHtml;
     }
 
-    const setLoadingState = (isLoading, text) => {
-        loading.classList.toggle('d-none', !isLoading);
-        if(text) document.getElementById('loading-text').textContent = text;
-    };
+    function updateProgress(progress, status) {
+        const p = Math.min(100, Math.round(progress));
+        progressBar.style.width = p + '%';
+        progressBar.textContent = p + '%';
+        progressBar.setAttribute('aria-valuenow', p);
+        progressStatusText.textContent = status;
+    }
+
     const resetUI = (isSearching = false) => {
         if (!isSearching) companySearch.value = '';
         analyzeBtn.disabled = true;
@@ -242,11 +291,14 @@ document.addEventListener('DOMContentLoaded', function () {
         companyDataContainer.classList.add('d-none');
         resultsContainer.classList.add('d-none');
     };
+
     const showError = (message) => {
         errorAlert.textContent = `Error: ${message}`;
         errorAlert.classList.remove('d-none');
     };
+
     const formatValue = (val) => val != null ? val.toFixed(2) : 'N/A';
+
     const formatLargeNumber = (num, currency = true) => {
         if (num == null) return 'N/A';
         const prefix = currency ? '₹' : '';

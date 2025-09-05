@@ -4,7 +4,7 @@ import math
 
 
 class PositionalEncoding(nn.Module):
-    def __init__(self, d_model, dropout=0.1, max_len=5000):
+    def __init__(self, d_model, dropout=0.1, max_len=1000):
         super(PositionalEncoding, self).__init__()
         self.dropout = nn.Dropout(p=dropout)
 
@@ -14,15 +14,10 @@ class PositionalEncoding(nn.Module):
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
 
-        # --- CRITICAL FIX: Reshape to match the saved model's expected shape ---
-        # The saved model expects (1, max_len, d_model) but the code was creating (max_len, 1, d_model)
-        pe = pe.unsqueeze(0)  # This changes the shape to what the checkpoint expects.
-
+        pe = pe.unsqueeze(0)
         self.register_buffer('pe', pe)
 
     def forward(self, x):
-        # The input x is (batch, seq_len, features)
-        # We need to add pe which is (1, max_len, features)
         x = x + self.pe[:, :x.size(1), :]
         return self.dropout(x)
 
@@ -40,9 +35,7 @@ class StockPredictionTransformer(nn.Module):
             nn.Linear(d_model, d_model // 2),
             nn.ReLU(),
             nn.Dropout(0.1),
-            nn.Linear(d_model // 2, d_model // 4),
-            nn.ReLU(),
-            nn.Linear(d_model // 4, 1)
+            nn.Linear(d_model // 2, 1)
         )
         self.d_model = d_model
         self.init_weights()
@@ -57,7 +50,7 @@ class StockPredictionTransformer(nn.Module):
 
     def forward(self, src):
         src = self.input_proj(src) * math.sqrt(self.d_model)
-        src = self.pos_encoder(src)  # The positional encoding is now compatible
+        src = self.pos_encoder(src)
         output = self.transformer(src)
         output = self.output(output)
         return output.squeeze(-1)

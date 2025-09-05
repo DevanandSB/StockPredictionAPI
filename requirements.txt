@@ -15,3 +15,6 @@ beautifulsoup4
 nsepy
 vaderSentiment
 googlesearch-python
+lightning-fabric
+TA-Lib
+scipy
