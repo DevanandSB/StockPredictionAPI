@@ -31,6 +31,7 @@ class NewsSentimentAnalyzer:
         """
         Performs a targeted Google search for corporate action news.
         """
+        # Build a query that ONLY looks for the specific keywords you requested
         focus_query = " OR ".join(f'"{k}"' for k in NEWS_FOCUS_KEYWORDS)
         query = f'({company_name} OR {symbol}) ({focus_query}) site:' + " OR site:".join(NEWS_SOURCES)
 
@@ -38,12 +39,9 @@ class NewsSentimentAnalyzer:
         try:
             search_results = search(query, num_results=10, sleep_interval=2)
             for url in search_results:
+                # --- FIX: Create a natural-looking title, not Title Case ---
                 raw_title = url.split('/')[-1].replace('-', ' ').replace('.html', '')
-
-                # --- FIX: Preserve the original symbol's casing ---
-                # Capitalize the sentence, then replace the wrongly-cased symbol with the correct one.
-                temp_title = raw_title.capitalize()
-                title = temp_title.replace(symbol.capitalize(), symbol)
+                title = raw_title.capitalize()  # Capitalizes only the first letter
 
                 source = next((s for s in NEWS_SOURCES if s in url), "Unknown Source")
 
