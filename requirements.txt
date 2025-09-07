@@ -18,3 +18,4 @@ googlesearch-python
 lightning-fabric
 TA-Lib
 scipy
+arch
