@@ -2,9 +2,10 @@
 """
 Script to fix NLTK download issues
 """
-import nltk
-import ssl
 import os
+import ssl
+
+import nltk
 
 
 def fix_nltk():

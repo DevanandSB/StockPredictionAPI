@@ -1,5 +1,6 @@
-import os
 import argparse
+import os
+
 
 def generate_tree(directory, prefix="", ignore_list=None):
     """

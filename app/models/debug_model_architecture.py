@@ -1,6 +1,7 @@
-import torch
-import pickle
 import os
+import pickle
+
+import torch
 
 # Check the actual model architecture
 base_dir = os.path.dirname(os.path.abspath(__file__))  # app/models/

@@ -1,22 +1,21 @@
-import requests
-from bs4 import BeautifulSoup
-import yfinance as yf
-import pandas as pd
-from typing import Dict, Any, Optional, List
 import logging
-from datetime import datetime, timedelta
-import numpy as np
-import re
 import os
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-import torch
-from scipy.special import softmax
-import json
-from concurrent.futures import ThreadPoolExecutor, TimeoutError
-import asyncio
-import time
+import re
 import sys
+import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
+from datetime import datetime, timedelta
+from typing import Dict, Any, Optional
+
+import numpy as np
+import pandas as pd
+import requests
+import torch
+import yfinance as yf
+from bs4 import BeautifulSoup
 from googlesearch import search as google_search
+from scipy.special import softmax
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 logger = logging.getLogger(__name__)
 

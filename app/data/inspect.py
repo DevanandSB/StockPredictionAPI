@@ -1,6 +1,6 @@
 # inspect_metadata.py
-import pickle
 import os
+import pickle
 
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 metadata_path = os.path.join(base_dir, "data", "metadata.pkl")

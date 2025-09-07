@@ -1,7 +1,6 @@
-import yfinance as yf
 import pandas as pd
 import talib
-from datetime import datetime, timedelta
+import yfinance as yf
 
 
 def prepare_training_data(symbols: list, period: str = "5y"):

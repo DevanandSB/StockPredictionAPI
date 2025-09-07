@@ -1,6 +1,4 @@
-import pandas as pd
-import numpy as np
-from typing import Dict, List
+from typing import Dict
 
 
 def validate_input_data(fundamental_data: Dict[str, float],

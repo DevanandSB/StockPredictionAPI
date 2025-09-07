@@ -19,3 +19,4 @@ lightning-fabric
 TA-Lib
 scipy
 arch
+plotly

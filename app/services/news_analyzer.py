@@ -1,7 +1,8 @@
 import logging
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
-from googlesearch import search
 from datetime import datetime
+
+from googlesearch import search
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 logger = logging.getLogger(__name__)
 

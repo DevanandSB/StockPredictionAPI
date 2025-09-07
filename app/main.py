@@ -1,20 +1,21 @@
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, StreamingResponse
-import logging
-import json
-import os
 import asyncio
+import json
+import logging
+import os
 from typing import Dict, List
-from fastapi.middleware.cors import CORSMiddleware
+
 import pandas as pd
 import yfinance as yf
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
 # --- IMPORT THE REAL MODEL ---
 from app.models.prediction_model import initialize_model, prediction_model
-from app.services import data_fetcher
 from app.models.schemas import HealthCheck
+from app.services import data_fetcher
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
