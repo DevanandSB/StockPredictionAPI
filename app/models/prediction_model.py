@@ -144,24 +144,6 @@ class RealPredictionModel:
             logger.error(f"Error loading model: {e}", exc_info=True)
             return False
 
-    async def _fetch_market_data(self, symbol: str) -> pd.DataFrame:
-        """Fetch comprehensive market data"""
-        try:
-            symbol = symbol + '.NS' if not any(
-                ext in symbol for ext in ['.NS', '.BO']) and '.' not in symbol else symbol
-            stock = yf.Ticker(symbol)
-            hist = stock.history(period="3y", interval="1d")
-
-            if hist.empty:
-                logger.error(f"No data found for {symbol}")
-                return pd.DataFrame()
-
-            return self._calculate_advanced_indicators(hist)
-
-        except Exception as e:
-            logger.error(f"Error fetching market data: {e}")
-            return pd.DataFrame()
-
     def _calculate_advanced_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
         """Calculate advanced technical indicators"""
         try:
@@ -363,10 +345,6 @@ class RealPredictionModel:
         lower_bound = np.exp(log_mean - log_std)
         upper_bound = np.exp(log_mean + log_std)
 
-        # --- REMOVED THE HARDCODED LARGE-CAP BOUNDS ---
-        # No more artificial caps on upside or downside. The bounds are now
-        # determined purely by the stock's own volatility.
-
         # Calculate expected price
         expected_price = current_price * np.exp(daily_return * days)
 
@@ -463,24 +441,21 @@ class RealPredictionModel:
             logger.error(f"Error creating chart: {e}")
             return "<div>Error creating chart</div>"
 
-    async def predict_stream(self, symbol: Union[str, Dict], current_price: float = None) -> AsyncGenerator[Dict, Any]:
+    async def predict_stream(self, company_data: Dict, market_data: pd.DataFrame) -> AsyncGenerator[Dict, Any]:
         if not self.is_loaded:
             yield {"error": "Model not loaded.", "progress": 0}
             return
 
         try:
-            company_data = symbol if isinstance(symbol, dict) else {}
-            symbol_str = company_data.get('symbol', symbol) if isinstance(symbol, dict) else symbol
+            symbol_str = company_data.get('symbol')
+            current_price = company_data.get('current_price')
 
-            yield {"status": "Fetching market data...", "progress": 10}
-            market_data = await self._fetch_market_data(symbol_str)
             if market_data.empty:
-                yield {"error": f"Could not fetch data for {symbol_str}"}
+                yield {"error": f"Market data for {symbol_str} is empty."}
                 return
 
-            current_price = market_data['Close'].iloc[-1] if current_price is None else current_price
-
             yield {"status": "Preparing features...", "progress": 25}
+            await asyncio.sleep(0.1) # Give frontend time to update
             input_tensor = self._prepare_input_features(market_data, current_price, symbol_str, company_data)
 
             yield {"status": "Running AI prediction...", "progress": 40}
@@ -488,24 +463,15 @@ class RealPredictionModel:
 
             with torch.no_grad():
                 pred_return = self.model(input_tensor).item()
-                # Widen the cap to allow for more volatile stock predictions
-                pred_return = max(min(pred_return, 1.0), -0.70)  # Between -70% and +100% annually
+                pred_return = max(min(pred_return, 1.0), -0.70)
 
             yield {"status": "Analyzing volatility...", "progress": 50}
             annual_volatility = self._calculate_realistic_volatility(market_data)
 
-            # Define time horizons
             time_horizons = {
-                "Next Day": 1,
-                "Next Week": 5,
-                "Next 15 Days": 15,
-                "Next 30 Days": 30,
-                "Next 3 Months": 63,
-                "Next 6 Months": 126,
-                "Next Year": 252,
-                "Next 2 Years": 504
+                "Next Day": 1, "Next Week": 5, "Next 15 Days": 15, "Next 30 Days": 30,
+                "Next 3 Months": 63, "Next 6 Months": 126, "Next Year": 252, "Next 2 Years": 504
             }
-
             predictions_result = {}
             total_horizons = len(time_horizons)
             completed = 0
@@ -515,10 +481,7 @@ class RealPredictionModel:
                        "progress": 50 + int(40 * completed / total_horizons)}
 
                 lower_bound, upper_bound = self._calculate_realistic_bounds(
-                    current_price, pred_return, annual_volatility, days
-                )
-
-                # Calculate expected price
+                    current_price, pred_return, annual_volatility, days)
                 expected_price = current_price * (1 + pred_return * (days / 252))
 
                 predictions_result[name] = {
@@ -528,16 +491,13 @@ class RealPredictionModel:
                     'lower_change_percent': round((lower_bound / current_price - 1) * 100, 1),
                     'upper_change_percent': round((upper_bound / current_price - 1) * 100, 1)
                 }
-
                 completed += 1
                 await asyncio.sleep(0.1)
 
-            # Create interactive chart
             yield {"status": "Generating interactive chart...", "progress": 90}
             chart_html = self.create_stock_chart(market_data, predictions_result)
 
             yield {"status": "Finalizing predictions...", "progress": 95}
-
             final_result = {
                 "current_price": round(current_price, 2),
                 "predictions": predictions_result,

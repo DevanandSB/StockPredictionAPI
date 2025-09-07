@@ -12,8 +12,41 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 from scipy.special import softmax
 import json
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
+import asyncio
+import time
+import sys
+from googlesearch import search as google_search
 
 logger = logging.getLogger(__name__)
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('data_fetcher.log')
+    ]
+)
+
+
+# Function to run synchronous yfinance calls with a timeout
+def run_with_timeout(func, *args, timeout=30, **kwargs): # Increased timeout to 30 seconds
+    """
+    Run a function with timeout using ThreadPoolExecutor
+    Returns the result or raises TimeoutError
+    """
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(func, *args, **kwargs)
+        try:
+            return future.result(timeout=timeout)
+        except TimeoutError:
+            logger.error(f"Function {func.__name__} timed out after {timeout} seconds")
+            raise
+        except Exception as e:
+            logger.error(f"Error in run_with_timeout: {e}")
+            raise
 
 
 # Add this function to handle numpy serialization
@@ -146,6 +179,10 @@ class DataFetcher:
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
 
+        # Add session for connection pooling
+        self.session = requests.Session()
+        self.session.headers.update(self.headers)
+
         # Initialize sentiment analyzer
         self.sentiment_analyzer = FinBertSentimentAnalyzer()
 
@@ -153,71 +190,99 @@ class DataFetcher:
         self.newsapi_key = newsapi_key
         self.newsapi_url = "https://newsapi.org/v2/everything"
 
+        # Cache for news data to avoid repeated fetches
+        self.news_cache = {}
+        self.cache_timeout = 3600  # 1 hour cache timeout
+
         logger.info(f"DataFetcher initialized with NewsAPI: {bool(newsapi_key)}")
+
+    def cleanup(self):
+        """Clean up resources"""
+        if hasattr(self, 'session'):
+            self.session.close()
+        logger.info("DataFetcher resources cleaned up")
 
     def get_stock_fundamentals(self, symbol: str) -> Dict[str, Any]:
         """Scrapes fundamental data from Screener.in with fallback to yfinance"""
         logger.info(f"Scraping fundamentals for {symbol} from Screener.in")
         fundamentals = {}
 
-        try:
-            page_url = f"{self.screener_base_url}/company/{symbol}/consolidated/"
-            res = requests.get(page_url, headers=self.headers, timeout=15)
-            res.raise_for_status()
-            soup = BeautifulSoup(res.text, 'html.parser')
+        # Add retry mechanism
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                page_url = f"{self.screener_base_url}/company/{symbol}/consolidated/"
+                res = self.session.get(page_url, timeout=10)
+                res.raise_for_status()
+                soup = BeautifulSoup(res.text, 'html.parser')
 
-            # Extract fundamentals from page
-            top_ratios = soup.find('ul', id='top-ratios')
-            if top_ratios:
-                for li in top_ratios.find_all("li"):
-                    name_span = li.find("span", class_="name")
-                    value_span = li.find("span", class_="number")
-                    if name_span and value_span:
-                        name = name_span.text.strip()
-                        value = value_span.text.strip()
-                        if "Market Cap" in name:
-                            if 'Cr' in value:
-                                fundamentals['market_cap'] = safe_float(value.replace('Cr', '')) * 10000000
-                            elif 'Lac' in value:
-                                fundamentals['market_cap'] = safe_float(value.replace('Lac', '')) * 100000
-                            else:
-                                fundamentals['market_cap'] = safe_float(value)
-                        elif "Current Price" in name:
-                            fundamentals['current_price'] = safe_float(value)
-                        elif "Stock P/E" in name:
-                            fundamentals['pe_ratio'] = safe_float(value)
-                        elif "Book Value" in name:
-                            fundamentals['book_value'] = safe_float(value)
-                        elif "Dividend Yield" in name:
-                            fundamentals['dividend_yield'] = safe_float(value)
-                        elif "ROCE" in name:
-                            fundamentals['roce'] = safe_float(value)
-                        elif "ROE" in name:
-                            fundamentals['roe'] = safe_float(value)
-
-            # Extract additional ratios
-            sections = soup.find_all('section', class_='card')
-            for section in sections:
-                h2 = section.find('h2', class_='card-title')
-                if h2 and 'Ratios' in h2.text:
-                    for li in section.find_all('li'):
-                        name_span = li.find('span', class_='name')
-                        value_span = li.find('span', class_='number')
+                # Extract fundamentals from page
+                top_ratios = soup.find('ul', id='top-ratios')
+                if top_ratios:
+                    for li in top_ratios.find_all("li"):
+                        name_span = li.find("span", class_="name")
+                        value_span = li.find("span", class_="number")
                         if name_span and value_span:
                             name = name_span.text.strip()
                             value = value_span.text.strip()
-                            if "Debt to equity" in name:
-                                debt_equity = safe_float(value)
-                                if debt_equity is not None:
-                                    fundamentals['debt_to_equity'] = debt_equity / 100
-                            if "EPS" in name:
-                                fundamentals['eps'] = safe_float(value)
-        except Exception as e:
-            logger.warning(f"Could not scrape Screener.in for {symbol}: {e}")
+                            if "Market Cap" in name:
+                                if 'Cr' in value:
+                                    fundamentals['market_cap'] = safe_float(value.replace('Cr', '')) * 10000000
+                                elif 'Lac' in value:
+                                    fundamentals['market_cap'] = safe_float(value.replace('Lac', '')) * 100000
+                                else:
+                                    fundamentals['market_cap'] = safe_float(value)
+                            elif "Current Price" in name:
+                                fundamentals['current_price'] = safe_float(value)
+                            elif "Stock P/E" in name:
+                                fundamentals['pe_ratio'] = safe_float(value)
+                            elif "Book Value" in name:
+                                fundamentals['book_value'] = safe_float(value)
+                            elif "Dividend Yield" in name:
+                                fundamentals['dividend_yield'] = safe_float(value)
+                            elif "ROCE" in name:
+                                fundamentals['roce'] = safe_float(value)
+                            elif "ROE" in name:
+                                fundamentals['roe'] = safe_float(value)
+
+                # Extract additional ratios
+                sections = soup.find_all('section', class_='card')
+                for section in sections:
+                    h2 = section.find('h2', class_='card-title')
+                    if h2 and 'Ratios' in h2.text:
+                        for li in section.find_all('li'):
+                            name_span = li.find('span', class_='name')
+                            value_span = li.find('span', class_='number')
+                            if name_span and value_span:
+                                name = name_span.text.strip()
+                                value = value_span.text.strip()
+                                if "Debt to equity" in name:
+                                    debt_equity = safe_float(value)
+                                    if debt_equity is not None:
+                                        fundamentals['debt_to_equity'] = debt_equity / 100
+                                if "EPS" in name:
+                                    fundamentals['eps'] = safe_float(value)
+                break  # Success, break out of retry loop
+
+            except (requests.exceptions.RequestException, ConnectionError) as e:
+                if attempt == max_retries - 1:
+                    logger.error(f"Failed to scrape Screener.in for {symbol} after {max_retries} attempts: {e}")
+                else:
+                    logger.warning(f"Attempt {attempt + 1} failed for {symbol}, retrying...")
+                    time.sleep(2 ** attempt)  # Exponential backoff
+            except Exception as e:
+                logger.warning(f"Could not scrape Screener.in for {symbol}: {e}")
+                break
 
         # Fallback to yfinance for missing data
         try:
-            ticker_info = yf.Ticker(f"{symbol}.NS").info
+            ticker = yf.Ticker(f"{symbol}.NS")
+
+            # Create a proper function instead of using lambda
+            def get_ticker_info():
+                return ticker.info
+
+            ticker_info = run_with_timeout(get_ticker_info, timeout=30) # Increased timeout
 
             # Fill missing values
             if 'market_cap' not in fundamentals:
@@ -260,11 +325,15 @@ class DataFetcher:
     def get_technical_indicators(self, symbol: str) -> Dict[str, Any]:
         """Fetches technical indicators using yfinance"""
         try:
-            stock = yf.Ticker(f"{symbol}.NS")
-            hist = stock.history(period="1y")
+            # Define function for thread execution
+            def get_history():
+                stock = yf.Ticker(f"{symbol}.NS")
+                return stock.history(period="1y")
 
-            if hist.empty:
-                raise ValueError("Yfinance returned empty dataframe")
+            hist = run_with_timeout(get_history, timeout=30) # Increased timeout
+
+            if hist.empty or len(hist) < 50:
+                raise ValueError("Insufficient historical data")
 
             close_prices = hist['Close']
 
@@ -300,15 +369,31 @@ class DataFetcher:
             return convert_to_serializable(result)
 
         except Exception as e:
-            logger.error(f"Yfinance failed for {symbol}: {e}")
-            return convert_to_serializable(self._get_sample_technicals())
+            logger.error(f"Technical indicators failed for {symbol}: {e}")
+            # Return more conservative sample data
+            sample = self._get_sample_technicals()
+            sample['current_price'] = sample.get('current_price', 100) * 0.9  # Simulate drop
+            sample['rsi'] = 40  # More neutral RSI
+            return convert_to_serializable(sample)
 
     def fetch_news_sync(self, company_name: str, symbol: str) -> list:
-        """Synchronous news fetching"""
+        """Synchronous news fetching with caching to avoid repeated calls"""
+        # Check cache first
+        cache_key = f"{symbol}_{company_name}"
+        current_time = time.time()
+
+        if cache_key in self.news_cache:
+            cached_data, timestamp = self.news_cache[cache_key]
+            if current_time - timestamp < self.cache_timeout:
+                logger.info(f"Using cached news data for {symbol}")
+                return cached_data
+
         articles = []
 
+        # Try NewsAPI first if available
         if self.newsapi_key:
             try:
+                logger.info(f"Fetching news from NewsAPI for {company_name} ({symbol})")
                 params = {
                     'q': f'{company_name} {symbol} stock',
                     'language': 'en',
@@ -317,15 +402,70 @@ class DataFetcher:
                     'pageSize': 5
                 }
 
-                response = requests.get(self.newsapi_url, params=params, timeout=10)
+                response = self.session.get(self.newsapi_url, params=params, timeout=10)
                 if response.status_code == 200:
                     data = response.json()
                     articles = data.get('articles', [])
-            except Exception as e:
-                logger.warning(f"NewsAPI failed: {e}")
+                    logger.info(f"Found {len(articles)} articles from NewsAPI")
 
-        if not articles:
+                    # Cache the results
+                    self.news_cache[cache_key] = (articles, current_time)
+                    return articles
+                else:
+                    logger.warning(f"NewsAPI returned status code {response.status_code}")
+            except requests.exceptions.Timeout:
+                logger.warning("NewsAPI request timed out, falling back to Google Search")
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"NewsAPI request failed: {e}, falling back to Google Search")
+            except Exception as e:
+                logger.warning(f"Unexpected error with NewsAPI: {e}, falling back to Google Search")
+
+        # If NewsAPI failed or is not available, try Google Search
+        try:
+            logger.info(f"Fetching news from Google Search for {company_name} ({symbol})")
+            articles = self._get_news_from_google(company_name, symbol)
+            logger.info(f"Found {len(articles)} articles from Google Search")
+
+            # Cache the results
+            self.news_cache[cache_key] = (articles, current_time)
+            return articles
+        except Exception as e:
+            logger.error(f"Google Search fallback also failed: {e}")
             articles = self._get_fallback_news(company_name, symbol)
+
+            # Cache the fallback results
+            self.news_cache[cache_key] = (articles, current_time)
+            return articles
+
+    def _get_news_from_google(self, company_name: str, symbol: str) -> list:
+        """Get news articles using Google Search as fallback"""
+        articles = []
+        search_query = f"{company_name} {symbol} stock news latest"
+
+        try:
+            # Search for news using Google
+            search_results = list(google_search(
+                search_query,
+                num=5,
+                stop=5,
+                pause=2.0,
+                user_agent=self.headers['User-Agent']
+            ))
+
+            # Create article objects from search results
+            for i, url in enumerate(search_results):
+                articles.append({
+                    'title': f'{company_name} News {i + 1}',
+                    'description': f'Latest news about {company_name} ({symbol}) from web sources.',
+                    'url': url,
+                    'publishedAt': datetime.now().isoformat(),
+                    'source': {'name': 'Web Source'}
+                })
+
+        except Exception as e:
+            logger.error(f"Google search failed: {e}")
+            # Return fallback news if Google search fails
+            return self._get_fallback_news(company_name, symbol)
 
         return articles
 
@@ -338,6 +478,13 @@ class DataFetcher:
                 'url': '#',
                 'publishedAt': datetime.now().isoformat(),
                 'source': {'name': 'Financial News'}
+            },
+            {
+                'title': f'{company_name} stock analysis',
+                'description': f'Analysts are reviewing {company_name} stock performance.',
+                'url': '#',
+                'publishedAt': (datetime.now() - timedelta(days=1)).isoformat(),
+                'source': {'name': 'Market Analysis'}
             }
         ]
 
@@ -396,7 +543,11 @@ class DataFetcher:
         """Get social media sentiment"""
         try:
             stock = yf.Ticker(f"{symbol}.NS")
-            info = stock.info
+
+            def get_stock_info():
+                return stock.info
+
+            info = run_with_timeout(get_stock_info, timeout=10)
 
             change_percent = info.get('regularMarketChangePercent', 0)
             volume = info.get('regularMarketVolume', 0)
@@ -452,9 +603,12 @@ class DataFetcher:
             logger.warning(f"Analyst rating simulation failed: {e}")
             return 7.5
 
-    def get_sentiment_data(self, symbol: str, company_name: str) -> Dict[str, Any]:
-        """Get sentiment data"""
-        articles = self.fetch_news_sync(company_name, symbol)
+    def get_sentiment_data(self, symbol: str, company_name: str, articles: list = None) -> Dict[str, Any]:
+        """Get sentiment data - accepts pre-fetched articles to avoid repeated calls"""
+        # Use provided articles or fetch them if not provided
+        if articles is None:
+            articles = self.fetch_news_sync(company_name, symbol)
+
         news_data = self.analyze_news_sentiment(articles)
         social_sentiment = self.get_social_sentiment(symbol)
         analyst_rating = self.get_analyst_ratings(symbol)
@@ -469,19 +623,34 @@ class DataFetcher:
         })
 
     def get_company_data(self, symbol: str, company_name: str) -> Dict[str, Any]:
-        """Get all company data"""
-        fundamentals = self.get_stock_fundamentals(symbol)
-        technicals = self.get_technical_indicators(symbol)
-        sentiment_data = self.get_sentiment_data(symbol, company_name)
+        """Get all company data - fetches news once and reuses it"""
+        try:
+            fundamentals = self.get_stock_fundamentals(symbol)
+            technicals = self.get_technical_indicators(symbol)
 
-        return convert_to_serializable({
-            'symbol': symbol,
-            'company_name': company_name,
-            'fundamentals': fundamentals,
-            'technicals': technicals,
-            'sentiment': sentiment_data,
-            'last_updated': datetime.now().isoformat()
-        })
+            # Fetch news once and reuse it for sentiment analysis
+            articles = self.fetch_news_sync(company_name, symbol)
+            sentiment_data = self.get_sentiment_data(symbol, company_name, articles)
+
+            return convert_to_serializable({
+                'symbol': symbol,
+                'company_name': company_name,
+                'fundamentals': fundamentals,
+                'technicals': technicals,
+                'sentiment': sentiment_data,
+                'last_updated': datetime.now().isoformat(),
+                'success': True
+            })
+        except Exception as e:
+            logger.error(f"Failed to get company data for {symbol}: {e}")
+            # Return a minimal response with error indication
+            return convert_to_serializable({
+                'symbol': symbol,
+                'company_name': company_name,
+                'error': str(e),
+                'success': False,
+                'last_updated': datetime.now().isoformat()
+            })
 
     def _get_sample_fundamentals(self) -> Dict[str, Any]:
         return convert_to_serializable({
@@ -497,9 +666,36 @@ class DataFetcher:
         })
 
     def _get_sample_technicals(self) -> Dict[str, Any]:
-        """Provides sample data if all fetching fails."""
-        return {
-            'current_price': 2500, 'rsi': 55, 'macd': 5, 'macd_signal': 2,
-            'sma_50': 2400, 'sma_200': 2200, 'volume': 5000000,
-            '52_week_high': 3000, '52_week_low': 2000
-        }
+        return convert_to_serializable({
+            'current_price': 2500,
+            'rsi': 55,
+            'macd': 5,
+            'macd_signal': 2,
+            'sma_50': 2400,
+            'sma_200': 2200,
+            'volume': 5000000,
+            '52_week_high': 3000,
+            '52_week_low': 2000,
+            'price_vs_50sma': 4.2,
+            'price_vs_200sma': 13.6
+        })
+
+
+# Global exception handler
+def handle_global_exception(exc_type, exc_value, exc_traceback):
+    """Global exception handler"""
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+
+    logger.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+
+
+def initialize(self):
+    """Initialize the data fetcher (for async compatibility)"""
+    logger.info("DataFetcher initialized")
+    # This method can be empty or contain initialization logic
+    return self
+
+
+sys.excepthook = handle_global_exception

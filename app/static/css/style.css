@@ -1,180 +1,393 @@
-:root {
-    --primary-color: #2563eb;
-    --primary-hover: #1d4ed8;
-    --text-color: #334155;
-    --background-color: #f8fafc;
-    --card-background: #ffffff;
-    --border-color: #e2e8f0;
-    --success-color: #10b981;
-    --danger-color: #ef4444;
-    --warning-color: #f59e0b;
+/* Search Results Styling */
+.search-container {
+    position: relative;
 }
-body {
-    font-family: 'Inter', sans-serif;
-    background-color: var(--background-color);
-    color: var(--text-color);
+
+.search-results {
+    position: absolute;
+    background: white;
+    width: 100%;
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    z-index: 1000;
+    display: none;
 }
-.card {
-    border: 1px solid var(--border-color);
-    border-radius: 0.75rem;
-    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+
+.search-results.active {
+    display: block;
 }
-.card-header {
-    background-color: #fff;
-    border-bottom: 1px solid var(--border-color);
-    font-weight: 600;
+
+.search-result-item {
+    padding: 12px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+    transition: background-color 0.2s;
 }
-.btn-primary {
-    background-color: var(--primary-color);
-    border: none;
-    transition: background-color 0.2s ease-in-out;
+
+.search-result-item:hover {
+    background-color: #f8f9fa;
 }
-.btn-primary:hover {
-    background-color: var(--primary-hover);
+
+.search-result-item:last-child {
+    border-bottom: none;
 }
+
+.search-result-item strong {
+    display: block;
+    margin-bottom: 2px;
+}
+
+.search-result-item small {
+    font-size: 12px;
+    color: #6c757d;
+}
+
+/* Loading Indicator */
+#loading-indicator {
+    margin: 20px 0;
+}
+
+/* Metric Cards */
 .metric-card {
-    border-right: 1px solid var(--border-color);
+    text-align: center;
+    padding: 15px;
+    margin-bottom: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
 }
-.metric-card:last-child {
-    border-right: none;
-}
+
 .metric-icon {
-    font-size: 1.5rem;
-    margin-bottom: 0.5rem;
-    color: var(--primary-color);
+    font-size: 24px;
+    margin-bottom: 10px;
+    color: #6c757d;
 }
+
 .metric-value {
-    font-size: 1.5rem;
-    font-weight: 700;
+    font-size: 18px;
+    font-weight: bold;
+    color: #212529;
 }
+
 .metric-label {
-    font-size: 0.8rem;
-    color: #64748b;
+    font-size: 12px;
+    color: #6c757d;
     text-transform: uppercase;
 }
+
+/* Data Rows */
 .data-row {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid #f1f5f9;
+    padding: 8px 0;
+    border-bottom: 1px solid #f1f1f1;
 }
-.data-row:last-child { border-bottom: none; }
-.data-row .key { color: #475569; }
-.data-row .value { font-weight: 600; }
-.news-card {
-    display: flex;
-    align-items: flex-start;
-    padding: 0.75rem 0;
-    border-bottom: 1px solid #f1f5f9;
-    text-decoration: none;
-    color: inherit;
-    transition: background-color 0.2s ease;
+
+.data-row .key {
+    color: #6c757d;
 }
-.news-card:last-child { border-bottom: none; }
-.news-card:hover { background-color: #f8fafc; }
-.news-sentiment-icon {
-    font-size: 1.25rem;
-    margin-right: 1rem;
-    margin-top: 0.25rem;
+
+.data-row .value.positive {
+    color: #198754;
 }
-.news-title {
-    font-weight: 600;
-    margin-bottom: 0.25rem;
+
+.data-row .value.negative {
+    color: #dc3545;
 }
-.news-meta {
-    font-size: 0.8rem;
-    color: #64748b;
-}
-.positive { color: var(--success-color); }
-.negative { color: var(--danger-color); }
-.neutral { color: var(--warning-color); }
+
+/* Sentiment Items */
 .sentiment-item {
     display: flex;
     align-items: center;
-    margin-bottom: 1.25rem;
+    margin-bottom: 15px;
 }
-.sentiment-item:last-child { margin-bottom: 0; }
+
 .sentiment-icon {
-    font-size: 1.5rem;
-    margin-right: 1rem;
     width: 40px;
     height: 40px;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%;
-    background-color: #f0f2f5;
+    margin-right: 15px;
+    font-size: 18px;
 }
-.sentiment-icon.positive { color: var(--success-color); }
-.sentiment-icon.negative { color: var(--danger-color); }
-.sentiment-icon.neutral { color: var(--warning-color); }
-.sentiment-details { flex-grow: 1; }
+
+.sentiment-icon.positive {
+    background-color: #d4edda;
+    color: #198754;
+}
+
+.sentiment-icon.neutral {
+    background-color: #e2e3e5;
+    color: #6c757d;
+}
+
+.sentiment-icon.negative {
+    background-color: #f8d7da;
+    color: #dc3545;
+}
+
+.sentiment-details {
+    flex: 1;
+}
+
 .sentiment-label {
-    font-size: 0.9rem;
+    margin-bottom: 5px;
     font-weight: 500;
-    margin-bottom: 0.5rem;
-    color: #475569;
 }
-.progress {
-    height: 8px;
-    border-radius: 4px;
-    background-color: #e2e8f0;
+
+/* News Cards */
+.news-card {
+    display: flex;
+    padding: 15px;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    text-decoration: none;
+    color: inherit;
+    transition: background-color 0.2s;
 }
-.progress-bar.bg-positive { background-color: var(--success-color); }
-.progress-bar.bg-negative { background-color: var(--danger-color); }
-.progress-bar.bg-neutral { background-color: var(--warning-color); }
-.search-container { position: relative; }
-.search-results-dropdown {
+
+.news-card:hover {
+    background-color: #f8f9fa;
+    text-decoration: none;
+    color: inherit;
+}
+
+.news-sentiment-icon {
+    margin-right: 15px;
+    font-size: 20px;
+}
+
+.news-sentiment-icon.positive {
+    color: #198754;
+}
+
+.news-sentiment-icon.neutral {
+    color: #6c757d;
+}
+
+.news-sentiment-icon.negative {
+    color: #dc3545;
+}
+
+.news-title {
+    font-weight: 500;
+    margin-bottom: 5px;
+}
+
+.news-meta {
+    font-size: 12px;
+    color: #6c757d;
+}
+
+/* Prediction Cards */
+.prediction-card {
+    padding: 15px;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.horizon {
+    font-weight: bold;
+    color: #0d6efd;
+    margin-bottom: 8px;
+}
+
+.range {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.expected-price {
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.percentage-range {
+    font-size: 12px;
+}
+
+/* Header and Footer */
+.navbar-brand {
+    font-weight: bold;
+    font-size: 1.5rem;
+}
+
+footer {
+    margin-top: 3rem;
+    padding: 2rem 0;
+    background-color: #f8f9fa;
+}
+
+/* Custom colors */
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.hero-section {
+    padding: 3rem 0;
+    margin-bottom: 2rem;
+}
+/* Professional Chart Styles */
+.chart-loading-overlay {
     position: absolute;
-    top: 100%;
+    top: 0;
     left: 0;
     right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.chart-tooltip {
+    position: fixed;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    pointer-events: none;
     z-index: 1000;
-    background-color: #fff;
-    border: 1px solid #dee2e6;
-    border-top: none;
-    border-radius: 0 0 0.5rem 0.5rem;
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-    max-height: 250px;
-    overflow-y: auto;
+    display: none;
+    backdrop-filter: blur(2px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.chart-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.chart-controls .btn {
+    font-size: 12px;
+    padding: 4px 8px;
+}
+
+/* TradingView-like dark theme option */
+.chart-dark-theme {
+    background: #131722 !important;
+}
+
+.chart-dark-theme .tv-lightweight-charts {
+    background: #131722;
+}
+
+/* Responsive chart */
+@media (max-width: 768px) {
+    #price-chart {
+        height: 400px;
+    }
+
+    .chart-controls {
+        flex-direction: column;
+        gap: 4px;
+    }
+}
+
+/* Fullscreen styles */
+#price-chart:-webkit-full-screen {
+    height: 100vh !important;
+    width: 100vw !important;
+}
+
+#price-chart:-ms-fullscreen {
+    height: 100vh !important;
+    width: 100vw !important;
+}
+
+#price-chart:fullscreen {
+    height: 100vh !important;
+    width: 100vw !important;
+}
+
+/* Chart Container */
+#price-chart {
+    height: 500px;
+    width: 100%;
+    background: transparent;
+}
+
+/* Chart specific styles */
+.tv-lightweight-charts {
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+/* Prediction tooltip */
+#prediction-tooltip {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    pointer-events: none;
+    z-index: 1000;
+    max-width: 300px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     display: none;
 }
-.search-results-dropdown.active { display: block; }
-.search-result-item {
-    padding: 0.75rem 1.25rem;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
+
+/* Add these chart-specific styles to your existing style.css */
+
+/* Chart Container */
+#price-chart {
+    height: 500px;
+    width: 100%;
+    background: white;
+    border-radius: 0 0 8px 8px;
 }
-.search-result-item:hover { background-color: #f0f2f5; }
-.search-result-item:last-child { border-bottom: none; }
-.prediction-card {
-    background-color: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 0.5rem;
-    padding: 1rem;
-    text-align: center;
+
+/* Ensure chart has proper dimensions */
+.tv-lightweight-charts {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Chart container within card */
+.card-body.p-0 {
+    position: relative;
+}
+
+/* Prediction tooltip */
+#prediction-tooltip {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    pointer-events: none;
+    z-index: 1000;
+    max-width: 300px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    display: none;
+}
+
+/* Chart controls */
+.chart-controls {
     display: flex;
-    flex-direction: column;
-    justify-content: space-between;
+    gap: 8px;
 }
-.prediction-card .horizon {
-    font-weight: 600;
-    font-size: 1rem;
-    color: var(--primary-color);
+
+/* Make sure chart is visible */
+#chart-container .card {
+    overflow: hidden;
 }
-.prediction-card .range {
-    font-size: 1.25rem;
-    font-weight: 500;
-}
-.prediction-card .expected-price {
-    font-size: 0.85rem;
-    margin: 0.25rem 0;
-}
-.prediction-card .percentage-range {
-    font-size: 1rem;
-    font-weight: 500;
-    margin-top: 0.5rem;
-    padding-top: 0.5rem;
-    border-top: 1px solid #e2e8f0;
+
+/* Responsive chart */
+@media (max-width: 768px) {
+    #price-chart {
+        height: 300px;
+    }
 }

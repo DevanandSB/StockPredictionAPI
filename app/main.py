@@ -8,6 +8,8 @@ import os
 import asyncio
 from typing import Dict, List
 from fastapi.middleware.cors import CORSMiddleware
+import pandas as pd
+import yfinance as yf
 
 # --- IMPORT THE REAL MODEL ---
 from app.models.prediction_model import initialize_model, prediction_model
@@ -32,6 +34,9 @@ app.add_middleware(
 
 
 def load_companies() -> List[Dict[str, str]]:
+    """
+    Loads the list of supported companies from the companies.json file.
+    """
     try:
         companies_path = os.path.join(os.path.dirname(__file__), "data", "companies.json")
         with open(companies_path, 'r') as f:
@@ -39,6 +44,29 @@ def load_companies() -> List[Dict[str, str]]:
     except Exception as e:
         logger.error(f"Error loading companies: {e}")
         return []
+
+
+async def get_market_data(symbol: str) -> pd.DataFrame:
+    """
+    Asynchronously fetches and prepares historical market data.
+    This logic is moved here from the model to centralize data fetching.
+    """
+    try:
+        symbol_ns = symbol + '.NS' if not any(ext in symbol for ext in ['.NS', '.BO']) else symbol
+
+        loop = asyncio.get_event_loop()
+        hist = await loop.run_in_executor(None, lambda: yf.Ticker(symbol_ns).history(period="3y", interval="1d"))
+
+        if hist.empty:
+            logger.error(f"No data found for {symbol_ns}")
+            return pd.DataFrame()
+
+        # The prediction model instance has the indicator calculation logic we need
+        return prediction_model._calculate_advanced_indicators(hist)
+
+    except Exception as e:
+        logger.error(f"Error fetching market data for {symbol}: {e}")
+        return pd.DataFrame()
 
 
 @app.get("/api/companies", tags=["Data"])
@@ -49,6 +77,9 @@ async def get_companies():
 
 @app.on_event("startup")
 async def startup_event():
+    """
+    Initializes the prediction model when the application starts.
+    """
     logger.info("Initializing REAL prediction model...")
     if not initialize_model():
         logger.error("FATAL: Failed to initialize REAL prediction model.")
@@ -56,27 +87,49 @@ async def startup_event():
 
 @app.get("/", response_class=HTMLResponse, tags=["Web Interface"])
 async def read_root(request: Request):
+    """
+    Serves the main HTML page for the web interface.
+    """
     return templates.TemplateResponse("index.html", {"request": request, "companies": load_companies()})
 
 
 @app.get("/health", response_model=HealthCheck, tags=["Health"])
 async def health_check():
+    """
+    Provides a health check endpoint to verify API and model status.
+    """
     return HealthCheck(status="healthy", model_loaded=prediction_model.is_loaded)
 
 
 @app.get("/api/company/{symbol}", tags=["Data"])
 async def get_company_data(symbol: str):
+    """
+    Fetches and returns comprehensive data for a given stock symbol.
+    """
     try:
         companies = load_companies()
         company_name = next((c["name"] for c in companies if c["symbol"] == symbol), symbol)
+
+        # Fetch all data components
         fundamentals = data_fetcher.get_stock_fundamentals(symbol)
         technicals = data_fetcher.get_technical_indicators(symbol)
         sentiment = data_fetcher.get_sentiment_data(symbol, company_name)
-        return {"fundamentals": fundamentals, "technicals": technicals, "sentiment": sentiment,
-                "company_name": company_name}
+
+        return {
+            "symbol": symbol,
+            "company_name": company_name,
+            "fundamentals": fundamentals,
+            "technicals": technicals,
+            "sentiment": sentiment,
+            "success": True
+        }
     except Exception as e:
         logger.error(f"Error fetching data for {symbol}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error fetching data: {e}")
+        return {
+            "symbol": symbol,
+            "error": f"Error fetching data: {e}",
+            "success": False
+        }
 
 
 @app.get("/api/predict-stream/{symbol}", tags=["Prediction"])
@@ -89,31 +142,28 @@ async def predict_stock_stream(symbol: str):
 
     async def event_stream():
         try:
-            logger.info(f"Starting data fetch for {symbol} stream...")
-            yield f"data: {json.dumps({'status': 'Fetching company data...', 'progress': 0})}\n\n"
-            await asyncio.sleep(0.1)
+            yield f"data: {json.dumps({'status': 'Fetching all required data...', 'progress': 5})}\n\n"
 
             companies = load_companies()
             company_name = next((c["name"] for c in companies if c["symbol"] == symbol), symbol)
 
-            # Fetch all necessary data
+            # Fetch all necessary data components in one place
             fundamentals = data_fetcher.get_stock_fundamentals(symbol)
             technicals = data_fetcher.get_technical_indicators(symbol)
             sentiment = data_fetcher.get_sentiment_data(symbol, company_name)
+            market_data = await get_market_data(symbol)
 
-            # **CRITICAL FIX:** Combine all data into a single dictionary and get the current price.
-            # Then, pass the `symbol` string and the `all_data` dictionary separately to the prediction function.
+            if market_data.empty:
+                yield f"data: {json.dumps({'error': 'Could not retrieve market history for prediction.'})}\n\n"
+                return
+
             all_data = {
-                "symbol": symbol,
-                "company_name": company_name,
-                **fundamentals,
-                **technicals,
-                **sentiment
+                "symbol": symbol, "company_name": company_name,
+                **fundamentals, **technicals, **sentiment
             }
-            current_price = technicals.get('current_price', 0)
 
             logger.info(f"Starting prediction stream for {symbol}...")
-            async for progress_update in prediction_model.predict_stream(all_data, current_price):
+            async for progress_update in prediction_model.predict_stream(all_data, market_data):
                 yield f"data: {json.dumps(progress_update)}\n\n"
                 await asyncio.sleep(0.02)
 
@@ -128,7 +178,7 @@ async def predict_stock_stream(symbol: str):
 @app.post("/api/predict/{symbol}", tags=["Prediction"])
 async def predict_stock_real(symbol: str):
     """
-    Fetch data and make a prediction using the REAL Transformer AI model.
+    Fetches data and makes a prediction using the REAL Transformer AI model.
     """
     logger.info(f"Received prediction request for {symbol}")
     if not prediction_model.is_loaded:
@@ -138,16 +188,23 @@ async def predict_stock_real(symbol: str):
         companies = load_companies()
         company_name = next((c["name"] for c in companies if c["symbol"] == symbol), symbol)
 
+        # Fetch all data components
         fundamentals = data_fetcher.get_stock_fundamentals(symbol)
         technicals = data_fetcher.get_technical_indicators(symbol)
         sentiment = data_fetcher.get_sentiment_data(symbol, company_name)
+        market_data = await get_market_data(symbol)
 
-        all_data = {**fundamentals, **technicals, **sentiment}
-        current_price = technicals.get('current_price', 0)
+        if market_data.empty:
+            raise HTTPException(status_code=500, detail="Could not retrieve market history for prediction.")
 
-        # This is a non-streaming endpoint, so we await the final result of the simulation
+        all_data = {
+            "symbol": symbol, "company_name": company_name,
+            **fundamentals, **technicals, **sentiment
+        }
+
+        # Await the final result from the streaming prediction function
         final_result = None
-        async for update in prediction_model.predict_stream(all_data, current_price):
+        async for update in prediction_model.predict_stream(all_data, market_data):
             if update.get("status") == "Done":
                 final_result = update.get("result")
 
