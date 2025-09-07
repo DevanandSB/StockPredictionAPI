@@ -56,7 +56,8 @@ async def get_market_data(symbol: str) -> pd.DataFrame:
         symbol_ns = symbol + '.NS' if not any(ext in symbol for ext in ['.NS', '.BO']) else symbol
 
         loop = asyncio.get_event_loop()
-        hist = await loop.run_in_executor(None, lambda: yf.Ticker(symbol_ns).history(period="3y", interval="1d"))
+        # Changed from "3y" to "max" to get all historical data since IPO
+        hist = await loop.run_in_executor(None, lambda: yf.Ticker(symbol_ns).history(period="max", interval="1d"))
 
         if hist.empty:
             logger.error(f"No data found for {symbol_ns}")
@@ -68,7 +69,6 @@ async def get_market_data(symbol: str) -> pd.DataFrame:
     except Exception as e:
         logger.error(f"Error fetching market data for {symbol}: {e}")
         return pd.DataFrame()
-
 
 @app.get("/api/companies", tags=["Data"])
 async def get_companies():

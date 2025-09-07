@@ -42,6 +42,17 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // Add event listener for Analyze button
+    if (analyzeBtn) {
+        analyzeBtn.addEventListener('click', function() {
+            if (selectedSymbol) {
+                handleAnalysis(selectedSymbol);
+            } else {
+                showError("Please select a company first.");
+            }
+        });
+    }
+
     // --- Handlers ---
     function handleSearchInput() {
         const query = companySearch.value.toLowerCase();
@@ -82,6 +93,11 @@ document.addEventListener('DOMContentLoaded', function () {
         selectedSymbol = company.symbol;
         searchResults.classList.remove('active');
 
+        // Enable Analyze button
+        if (analyzeBtn) {
+            analyzeBtn.disabled = false;
+        }
+
         // AUTO-FETCH DATA IMMEDIATELY
         handleCompanySelect(selectedSymbol);
     }
@@ -111,14 +127,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
             displayCompanyData(data);
             companyDataContainer.classList.remove('d-none');
-            analyzeBtn.disabled = false;
-
-            // Auto-analyze after fetching data
-            handleAnalysis(symbol);
+            if (analyzeBtn) {
+                analyzeBtn.disabled = false;
+            }
 
         } catch (error) {
             console.error('Error in handleCompanySelect:', error);
             showError(error.message || 'Failed to fetch company data');
+            if (analyzeBtn) {
+                analyzeBtn.disabled = false;
+            }
         } finally {
             hideLoading();
             progressModal.hide();
@@ -126,9 +144,16 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function handleAnalysis(symbol) {
+        if (!symbol) {
+            showError("Please select a company first.");
+            return;
+        }
+
         console.log('Starting analysis for:', symbol);
         resultsContainer.classList.add('d-none');
-        analyzeBtn.disabled = true;
+        if (analyzeBtn) {
+            analyzeBtn.disabled = true;
+        }
         updateProgress(0, 'Initializing Analysis...');
         progressModal.show();
 
@@ -202,7 +227,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 eventSource = null;
             }
             progressModal.hide();
-            analyzeBtn.disabled = false;
+            if (analyzeBtn) {
+                analyzeBtn.disabled = false;
+            }
         }
     }
 
@@ -333,7 +360,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const orderedHorizons = [
             "Next Day", "Next Week", "Next 15 Days", "Next 30 Days",
-            "Next 3 Months", "Next 6 Months", "Next Year"
+            "Next 3 Months", "Next 6 Months", "Next Year", "Next 2 Years"
         ];
 
         for (const horizon of orderedHorizons) {
@@ -363,7 +390,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Price Prediction Chart</h5>
                     <div class="chart-controls">
                         <button id="reset-chart" class="btn btn-sm btn-outline-secondary">
-                            <i class="fas fa-sync-alt me-1"></i>Reset View
+                            <i class="fas fa-sync-alt me-1"></i>Default View
+                        </button>
+                        <button id="show-all-chart" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-expand-alt me-1"></i>Show All
                         </button>
                         <button id="fullscreen-chart" class="btn btn-sm btn-outline-secondary">
                             <i class="fas fa-expand me-1"></i>Fullscreen
@@ -377,6 +407,9 @@ document.addEventListener('DOMContentLoaded', function () {
                             <span class="visually-hidden">Loading chart...</span>
                         </div>
                     </div>
+                </div>
+                <div class="card-footer text-muted">
+                    <small>Scroll to zoom • Drag to pan • Default view shows 20 days history + 10 days prediction</small>
                 </div>
             </div>
         `;
@@ -424,6 +457,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     rightPriceScale: {
                         borderColor: 'rgba(197, 203, 206, 0.8)',
                         entireTextOnly: true,
+                        autoScale: true,
                     },
                     crosshair: {
                         mode: LightweightCharts.CrosshairMode.Normal,
@@ -449,38 +483,38 @@ document.addEventListener('DOMContentLoaded', function () {
                     },
                 });
 
-                // Prepare data
-                const historicalData = prepareHistoricalData(prediction);
+                // Prepare data - Use REAL historical data from backend with downsampling
+                const historicalData = prepareHistoricalData(prediction.historical_data);
                 const predictionData = preparePredictionData(prediction);
 
                 console.log('Historical data points:', historicalData.length);
                 console.log('Prediction data points:', predictionData.length);
+                console.log('Actual model predictions:', prediction.predictions);
 
-                // Create historical series (Line - no candlestick)
-                // Create historical series (Area - for better visualization)
-const historicalSeries = chartInstance.addAreaSeries({
-    topColor: 'rgba(38, 166, 154, 0.4)',
-    bottomColor: 'rgba(38, 166, 154, 0.1)',
-    lineColor: 'rgba(38, 166, 154, 1)',
-    lineWidth: 2,
-    title: 'Historical Price',
-    priceLineVisible: false,
-});
+                // Create historical series (Line)
+                const historicalSeries = chartInstance.addLineSeries({
+                    color: 'rgba(38, 166, 154, 1)',
+                    lineWidth: 2,
+                    title: 'Historical Price',
+                    priceLineVisible: false,
+                });
 
-// Create prediction series (Area)
-const predictionSeries = chartInstance.addAreaSeries({
-    topColor: 'rgba(41, 98, 255, 0.4)',
-    bottomColor: 'rgba(41, 98, 255, 0.1)',
-    lineColor: 'rgba(41, 98, 255, 1)',
-    lineWidth: 3,
-    lineStyle: LightweightCharts.LineStyle.Solid,
-    title: 'Predicted Price',
-    priceLineVisible: false,
-});
+                // Create prediction series (Line) - No area to avoid visual discontinuities
+                const predictionSeries = chartInstance.addLineSeries({
+                    color: 'rgba(41, 98, 255, 1)',
+                    lineWidth: 3,
+                    lineStyle: LightweightCharts.LineStyle.Solid,
+                    title: 'Predicted Price',
+                    priceLineVisible: false,
+                });
 
                 // Set data
                 historicalSeries.setData(historicalData);
-                predictionSeries.setData(predictionData);
+
+                // Only set prediction data if we have valid predictions
+                if (predictionData.length > 0) {
+                    predictionSeries.setData(predictionData);
+                }
 
                 // Set default view: 20 days historic + 10 days prediction
                 const today = new Date();
@@ -493,6 +527,22 @@ const predictionSeries = chartInstance.addAreaSeries({
                 chartInstance.timeScale().setVisibleRange({
                     from: Math.floor(twentyDaysAgo.getTime() / 1000),
                     to: Math.floor(tenDaysFuture.getTime() / 1000)
+                });
+
+                // Enable auto-scaling for price axis when user zooms/scrolls
+                chartInstance.applyOptions({
+                    handleScale: {
+                        axisPressedMouseMove: {
+                            time: true,
+                            price: true,
+                        },
+                    },
+                    handleScroll: {
+                        vertTouchDrag: true,
+                        horzTouchDrag: true,
+                        mouseWheel: true,
+                        pressedMouseMove: true,
+                    }
                 });
 
                 // Add crosshair move handler
@@ -542,6 +592,16 @@ const predictionSeries = chartInstance.addAreaSeries({
                         from: Math.floor(twentyDaysAgo.getTime() / 1000),
                         to: Math.floor(tenDaysFuture.getTime() / 1000)
                     });
+                });
+
+                // Add "Show All" button functionality
+                document.getElementById('show-all-chart').addEventListener('click', () => {
+                    if (historicalData.length > 0 && predictionData.length > 0) {
+                        chartInstance.timeScale().setVisibleRange({
+                            from: historicalData[0].time,
+                            to: predictionData[predictionData.length - 1].time
+                        });
+                    }
                 });
 
                 // Add fullscreen functionality
@@ -604,143 +664,177 @@ const predictionSeries = chartInstance.addAreaSeries({
         }, 100);
     }
 
-function prepareHistoricalData(prediction) {
-    const data = [];
-    const today = new Date();
-    const currentPrice = prediction.current_price;
-
-    // Create 60 days of realistic historical data with proper trends and volatility
-    let currentHistoricalPrice = currentPrice;
-    const historicalVolatility = 0.018; // 1.8% daily volatility
-
-    // Work backwards from current price
-    for (let i = 0; i <= 60; i++) {
-        const date = new Date(today);
-        date.setDate(date.getDate() - i);
-
-        if (i === 0) {
-            // Current day
-            data.unshift({
-                time: Math.floor(date.getTime() / 1000),
-                value: currentPrice
-            });
-            continue;
+    function prepareHistoricalData(historical_data) {
+        // Process REAL historical data from backend with intelligent downsampling
+        if (!historical_data || historical_data.length === 0) {
+            console.warn('No historical data provided');
+            return [];
         }
 
-        // Apply realistic historical movement (slight upward bias)
-        const trend = 0.0002; // Slight upward trend
-        const randomShock = (Math.random() - 0.4) * historicalVolatility; // Bias toward positive
-        const weeklyCycle = Math.sin(i * 0.3) * 0.008; // Weekly market cycles
+        // Sort data by date
+        const sortedData = historical_data.sort((a, b) => new Date(a.time) - new Date(b.time));
 
-        const dailyChange = trend + randomShock + weeklyCycle;
-        currentHistoricalPrice = currentHistoricalPrice / (1 + dailyChange); // Divide since we're going backwards
+        // Intelligent downsampling based on data length
+        let sampleRate = 1;
+        if (sortedData.length > 5000) {
+            sampleRate = 10; // For very long histories (20+ years)
+        } else if (sortedData.length > 2000) {
+            sampleRate = 5; // For long histories (8-20 years)
+        } else if (sortedData.length > 1000) {
+            sampleRate = 2; // For medium histories (4-8 years)
+        }
 
-        // Ensure historical prices are realistic
-        const minPrice = currentPrice * 0.6; // Don't go below 60% of current
-        currentHistoricalPrice = Math.max(minPrice, currentHistoricalPrice);
+        const downsampledData = [];
 
-        data.unshift({
-            time: Math.floor(date.getTime() / 1000),
-            value: currentHistoricalPrice
-        });
+        for (let i = 0; i < sortedData.length; i += sampleRate) {
+            downsampledData.push({
+                time: Math.floor(new Date(sortedData[i].time).getTime() / 1000),
+                value: parseFloat(sortedData[i].value)
+            });
+        }
+
+        console.log(`Downsampled from ${sortedData.length} to ${downsampledData.length} points (rate: ${sampleRate})`);
+        return downsampledData;
     }
 
-    return data;
-}
+    function preparePredictionData(prediction) {
+        const data = [];
+        const today = new Date();
+        const currentPrice = prediction.current_price;
 
+        if (!prediction.predictions) return data;
 
-function preparePredictionData(prediction) {
-    const data = [];
-    const today = new Date();
-    const currentPrice = prediction.current_price;
+        // Get the key prediction points from the AI model
+        const predictionPoints = getPredictionPoints(prediction);
 
-    // Start from current price
-    data.push({
-        time: Math.floor(today.getTime() / 1000),
-        value: currentPrice
-    });
+        if (predictionPoints.length === 0) return data;
 
-    // Use actual prediction data from the AI model
-    const horizons = prediction.predictions;
-    if (!horizons) return data;
-
-    // Calculate growth rates from different horizons
-    const growthRates = {};
-
-    if (horizons["Next Year"]) {
-        const yearlyGrowth = (horizons["Next Year"].expected_price / currentPrice) - 1;
-        growthRates.yearly = yearlyGrowth;
-    }
-
-    if (horizons["Next 6 Months"]) {
-        const sixMonthGrowth = (horizons["Next 6 Months"].expected_price / currentPrice) - 1;
-        growthRates.sixMonth = sixMonthGrowth;
-    }
-
-    if (horizons["Next 3 Months"]) {
-        const threeMonthGrowth = (horizons["Next 3 Months"].expected_price / currentPrice) - 1;
-        growthRates.threeMonth = threeMonthGrowth;
-    }
-
-    // Use the most relevant growth rate (prioritize shorter horizons)
-    let selectedGrowthRate = 0.0005; // Default small growth
-
-    if (growthRates.threeMonth) {
-        selectedGrowthRate = growthRates.threeMonth / 90; // Daily growth for 3 months
-    } else if (growthRates.sixMonth) {
-        selectedGrowthRate = growthRates.sixMonth / 180; // Daily growth for 6 months
-    } else if (growthRates.yearly) {
-        selectedGrowthRate = growthRates.yearly / 365; // Daily growth for 1 year
-    }
-
-    // Create realistic prediction data with volatility and trends
-    let currentPredictedPrice = currentPrice;
-    const volatility = 0.02; // 2% daily volatility for predictions
-
-    // Create 90 days of prediction data with realistic fluctuations
-    for (let i = 1; i <= 90; i++) {
-        const futureDate = new Date(today);
-        futureDate.setDate(today.getDate() + i);
-
-        // Apply the growth trend with realistic daily fluctuations
-        const dailyTrend = selectedGrowthRate;
-        const randomShock = (Math.random() - 0.5) * volatility; // Random daily fluctuation
-        const marketSentiment = Math.sin(i * 0.1) * 0.005; // Weekly cycles
-
-        // Combine trend + randomness + market cycles
-        const dailyChange = dailyTrend + randomShock + marketSentiment;
-        currentPredictedPrice = currentPredictedPrice * (1 + dailyChange);
-
-        // Ensure price stays within reasonable bounds
-        const maxPrice = currentPrice * 2.5; // Don't go above 250% of current
-        const minPrice = currentPrice * 0.5; // Don't go below 50% of current
-        currentPredictedPrice = Math.max(minPrice, Math.min(maxPrice, currentPredictedPrice));
+        // Start from current price (connect to historical data)
+        // Ensure we use a trading day (skip if today is weekend)
+        let startChartDate = new Date(today);
+        if (startChartDate.getDay() === 0 || startChartDate.getDay() === 6) {
+            // If today is weekend, move to next trading day (Monday)
+            startChartDate.setDate(startChartDate.getDate() + (startChartDate.getDay() === 0 ? 1 : 2));
+        }
 
         data.push({
-            time: Math.floor(futureDate.getTime() / 1000),
-            value: currentPredictedPrice
+            time: Math.floor(startChartDate.getTime() / 1000),
+            value: currentPrice
         });
+
+        // Create realistic prediction curve using Brownian motion with drift
+        const realisticPredictionData = createRealisticPredictionCurve(predictionPoints, startChartDate, currentPrice, prediction.annual_volatility);
+
+        return data.concat(realisticPredictionData);
     }
 
-    return data;
-}
-    function calculateAverageGrowth(predictions) {
-        if (!predictions) return 0.0005; // Default small growth
+    function getPredictionPoints(prediction) {
+        const points = [];
+        const today = new Date();
 
-        const horizons = ["Next Year", "Next 6 Months", "Next 3 Months"];
-        let totalGrowth = 0;
-        let count = 0;
+        // Define the prediction horizons and their TRADING day offsets (approx)
+        const horizons = {
+            "Next Day": 1,
+            "Next Week": 5,
+            "Next 15 Days": 15,
+            "Next 30 Days": 21,    // ~30 calendar days = ~21 trading days
+            "Next 3 Months": 63,   // 3 months = ~63 trading days
+            "Next 6 Months": 126,  // 6 months = ~126 trading days
+            "Next Year": 252,      // 1 year = 252 trading days
+            "Next 2 Years": 504    // 2 years = 504 trading days
+        };
 
-        for (const horizon of horizons) {
-            if (predictions[horizon]) {
-                const pred = predictions[horizon];
-                const growth = (pred.expected_price / pred.current_price) - 1;
-                totalGrowth += growth;
-                count++;
+        // Create prediction points from the actual model output
+        for (const [horizon, tradingDays] of Object.entries(horizons)) {
+            if (prediction.predictions[horizon]) {
+                const pred = prediction.predictions[horizon];
+                const futureDate = getFutureTradingDate(today, tradingDays);
+
+                points.push({
+                    time: Math.floor(futureDate.getTime() / 1000),
+                    value: pred.expected_price,
+                    horizon: horizon,
+                    tradingDays: tradingDays
+                });
             }
         }
 
-        return count > 0 ? totalGrowth / count : 0.0005;
+        return points.sort((a, b) => a.tradingDays - b.tradingDays);
+    }
+
+    function getFutureTradingDate(startDate, tradingDays) {
+        let currentDate = new Date(startDate);
+        let daysCount = 0;
+
+        while (daysCount < tradingDays) {
+            currentDate.setDate(currentDate.getDate() + 1);
+
+            // Skip weekends (Saturday = 6, Sunday = 0)
+            if (currentDate.getDay() !== 0 && currentDate.getDay() !== 6) {
+                daysCount++;
+            }
+        }
+
+        return currentDate;
+    }
+
+    function createRealisticPredictionCurve(predictionPoints, startDate, startPrice, annualVolatility) {
+        const curve = [];
+
+        if (predictionPoints.length === 0) return curve;
+
+        // Calculate daily drift from the 2-year prediction
+        const twoYearPoint = predictionPoints.find(p => p.horizon === "Next 2 Years");
+        const dailyDrift = twoYearPoint ?
+            Math.log(twoYearPoint.value / startPrice) / 500 : // Use ~500 trading days for 2 years (252 trading days/year)
+            0.0005; // Default small growth
+
+        // Convert annual volatility to daily volatility
+        const dailyVolatility = (annualVolatility / 100) / Math.sqrt(252);
+
+        let currentPrice = startPrice;
+        let currentDate = new Date(startDate);
+        let tradingDays = 0;
+        const maxTradingDays = 504; // 2 years * 252 trading days/year
+
+        // Create 2 years of trading days prediction data
+        while (tradingDays < maxTradingDays) {
+            // Move to next trading day (skip weekends)
+            currentDate.setDate(currentDate.getDate() + 1);
+
+            // Skip weekends (Saturday = 6, Sunday = 0)
+            if (currentDate.getDay() === 0 || currentDate.getDay() === 6) {
+                continue;
+            }
+
+            tradingDays++;
+
+            // Brownian motion with drift: dS = μSdt + σSdW
+            const drift = dailyDrift * currentPrice;
+            const shock = dailyVolatility * currentPrice * gaussianRandom();
+
+            currentPrice = currentPrice + drift + shock;
+
+            // Ensure price stays within reasonable bounds
+            const maxPrice = startPrice * 3.0;
+            const minPrice = startPrice * 0.3;
+            currentPrice = Math.max(minPrice, Math.min(maxPrice, currentPrice));
+
+            curve.push({
+                time: Math.floor(currentDate.getTime() / 1000),
+                value: currentPrice
+            });
+        }
+
+        return curve;
+    }
+
+    function gaussianRandom() {
+        // Box-Muller transform for Gaussian random numbers
+        let u = 0, v = 0;
+        while(u === 0) u = Math.random(); // Converting [0,1) to (0,1)
+        while(v === 0) v = Math.random();
+        return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
     }
 
     function updateChartTooltip(content, x, y) {
@@ -796,7 +890,7 @@ function preparePredictionData(prediction) {
 
     const resetUI = (isSearching = false) => {
         if (!isSearching) companySearch.value = '';
-        analyzeBtn.disabled = true;
+        if (analyzeBtn) analyzeBtn.disabled = true;
         errorAlert.classList.add('d-none');
         companyDataContainer.classList.add('d-none');
         resultsContainer.classList.add('d-none');
@@ -814,7 +908,7 @@ function preparePredictionData(prediction) {
         errorAlert.textContent = `Error: ${message}`;
         errorAlert.classList.remove('d-none');
         progressModal.hide();
-        analyzeBtn.disabled = false;
+        if (analyzeBtn) analyzeBtn.disabled = false;
         hideLoading();
     };
 

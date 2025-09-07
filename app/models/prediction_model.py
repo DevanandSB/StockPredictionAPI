@@ -448,7 +448,7 @@ class RealPredictionModel:
                 return
 
             yield {"status": "Preparing features...", "progress": 25}
-            await asyncio.sleep(0.1) # Give frontend time to update
+            await asyncio.sleep(0.1)  # Give frontend time to update
             input_tensor = self._prepare_input_features(market_data, current_price, symbol_str, company_data)
 
             yield {"status": "Running AI prediction...", "progress": 40}
@@ -487,14 +487,18 @@ class RealPredictionModel:
                 completed += 1
                 await asyncio.sleep(0.1)
 
-            yield {"status": "Generating interactive chart...", "progress": 90}
-            chart_html = self.create_stock_chart(market_data, predictions_result)
+            yield {"status": "Preparing historical data...", "progress": 90}
+
+            # Convert historical data to a JSON-friendly format
+            historical_data_for_frontend = market_data.reset_index()[['Date', 'Close']].rename(
+                columns={'Date': 'time', 'Close': 'value'})
+            historical_data_for_frontend['time'] = historical_data_for_frontend['time'].dt.strftime('%Y-%m-%d')
 
             yield {"status": "Finalizing predictions...", "progress": 95}
             final_result = {
                 "current_price": round(current_price, 2),
                 "predictions": predictions_result,
-                "chart_html": chart_html,
+                "historical_data": historical_data_for_frontend.to_dict(orient='records'),  # Added historical data
                 "basis": "GARCH Volatility & Analytical Bounds",
                 "annual_volatility": round(annual_volatility * 100, 1),
                 "expected_annual_return": round(pred_return * 100, 1),
