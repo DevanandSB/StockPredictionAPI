@@ -20,3 +20,5 @@ TA-Lib
 scipy
 arch
 plotly
+gunicorn
+google-cloud-storage

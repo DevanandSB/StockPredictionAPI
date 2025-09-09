@@ -1,0 +1,18 @@
+# app.yaml
+
+runtime: python312
+instance_class: F1 # Or F2 if you need more memory
+
+entrypoint: gunicorn -w 4 -k uvicorn.workers.UvicornWorker --bind "0.0.0.0:$PORT" app.main:app
+
+# ADD THIS ENTIRE SECTION
+health_check:
+  enable_health_check: true
+  check_interval_sec: 30
+  timeout_sec: 10
+  unhealthy_threshold: 4 # Allows 4 failures (2 minutes) before restarting
+  healthy_threshold: 2
+
+automatic_scaling:
+  min_instances: 0
+  max_instances: 2
