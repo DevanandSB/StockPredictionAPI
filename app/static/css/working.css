@@ -1,0 +1,56 @@
+/*
+This file styles the "How It Works" page.
+It gives a fantasy or magical feel to the design.
+*/
+
+/* Styles for the cards in the "Our Magical Process" section */
+.fantasy-card {
+    background: rgba(255, 255, 255, 0.05); /* Slightly see-through background */
+    border-radius: 16px; /* Rounded corners */
+    border: 1px solid rgba(139, 95, 191, 0.3); /* Purple border */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); /* Soft shadow */
+    height: 100%; /* Make all cards the same height */
+    transition: all 0.3s ease; /* Smooth animation on hover */
+}
+
+.fantasy-card:hover {
+    transform: translateY(-10px); /* Move the card up a little when you hover */
+    box-shadow: 0 15px 40px rgba(139, 95, 191, 0.3); /* Stronger purple glow on hover */
+}
+
+/* Styles for the step numbers (1, 2, 3...) */
+.step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%; /* Makes it a circle */
+    background: linear-gradient(145deg, var(--primary), var(--primary-dark)); /* Purple gradient */
+    color: var(--light); /* White text color */
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    box-shadow: 0 0 20px rgba(139, 95, 191, 0.5); /* Purple glow */
+}
+
+/* Styles for the big icons next to the steps */
+.fantasy-illustration {
+    position: relative;
+    color: var(--primary); /* Purple color for the icon */
+}
+
+/* Styles for the "Magical Companions" section */
+.fantasy-character {
+    transition: all 0.3s ease; /* Smooth animation on hover */
+}
+
+.fantasy-character:hover {
+    transform: scale(1.05); /* Makes the character box slightly bigger on hover */
+}
+
+/* FIXED: Control the icon size */
+.character-icon i {
+    font-size: 48px; /* Sets a specific, smaller size for the icons */
+    color: var(--primary);
+}

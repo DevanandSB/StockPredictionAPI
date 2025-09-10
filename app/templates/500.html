@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>500 - System Halt</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #8B5FBF;
+            --primary-dark: #6A3093;
+            --accent: #A37EBA;
+            --green: #00cc88;
+            --red: #ff3860;
+            --dark: #121212;
+            --darker: #0a0a0a;
+            --light: #ffffff;
+            --gray: #cccccc;
+            --gray-dark: #888888;
+        }
+
+        body {
+            background: linear-gradient(-45deg, var(--darker), var(--dark), #1a1035, #2d1b4e);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            color: var(--light);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow: hidden; /* Hide scrollbars if content is larger than viewport */
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .error-card {
+            width: 90%;
+            max-width: 800px; /* Wider card for a full-screen feel */
+            height: auto;
+            min-height: 50vh; /* Ensure card takes up significant vertical space */
+            background: rgba(20, 20, 30, 0.85); /* Slightly less transparent */
+            backdrop-filter: blur(15px); /* More blur */
+            border: 1px solid rgba(139, 95, 191, 0.4); /* Stronger border */
+            border-radius: 20px;
+            padding: 3rem 2rem; /* Increased padding */
+            text-align: center;
+            box-shadow: 0 15px 50px 0 rgba(139, 95, 191, 0.3); /* More prominent shadow */
+            animation: fadeInScale 1s ease-out forwards;
+            display: flex; /* Use flexbox for internal alignment */
+            flex-direction: column;
+            justify-content: space-between; /* Distribute space between elements */
+            align-items: center;
+        }
+
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.9) translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .error-code {
+            font-size: 5rem;
+            font-weight: 900;
+            background: linear-gradient(45deg, var(--red) 30%, var(--primary) 70%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 0.5rem;
+            line-height: 1;
+            letter-spacing: -2px;
+            animation: pulseError 2s infinite alternate;
+        }
+
+        @keyframes pulseError {
+            from { text-shadow: 0 0 5px rgba(255, 56, 96, 0.5); }
+            to { text-shadow: 0 0 15px rgba(255, 56, 96, 0.8), 0 0 20px rgba(139, 95, 191, 0.5); }
+        }
+
+        .error-subtitle {
+            font-size: 1.2rem;
+            color: var(--gray);
+            margin-bottom: 2rem;
+            font-weight: 500;
+        }
+
+        .dynamic-message {
+            font-size: 1.8rem; /* Larger font for the main message */
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 3rem;
+            line-height: 1.4;
+            animation: slideInUp 0.8s ease-out;
+            max-width: 80%; /* Constrain width for better readability */
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: auto; /* Push buttons to the bottom of the flex container */
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15px 35px;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            gap: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn-primary {
+            background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+            color: var(--light);
+            box-shadow: 0 10px 30px rgba(139, 95, 191, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-7px);
+            box-shadow: 0 18px 45px rgba(139, 95, 191, 0.6);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 2px solid var(--accent);
+            color: var(--accent);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(163, 126, 186, 0.15);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(163, 126, 186, 0.2);
+        }
+
+        @media (max-width: 768px) {
+            .error-card {
+                padding: 2.5rem 1.5rem;
+                min-height: 60vh;
+            }
+            .error-code {
+                font-size: 4rem;
+            }
+            .error-subtitle {
+                font-size: 1rem;
+            }
+            .dynamic-message {
+                font-size: 1.5rem;
+                max-width: 90%;
+            }
+            .btn {
+                padding: 12px 25px;
+                font-size: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .error-card {
+                padding: 2rem 1rem;
+                min-height: 70vh;
+            }
+            .error-code {
+                font-size: 3rem;
+            }
+            .error-subtitle {
+                font-size: 0.9rem;
+            }
+            .dynamic-message {
+                font-size: 1.2rem;
+                max-width: 95%;
+            }
+            .action-buttons {
+                flex-direction: column;
+                width: 100%;
+            }
+            .btn {
+                width: 100%;
+            }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="error-card">
+        <div class="header-section">
+            <h1 class="error-code">ERR:500</h1>
+            <p class="error-subtitle">Internal Server Error Inc. has ceased operations.</p>
+        </div>
+
+        <p class="dynamic-message" id="sarcasticMessage"></p>
+
+        <div class="action-buttons">
+            <a href="/" class="btn btn-primary">
+                <i class="fas fa-chart-line"></i> Check your Remaining Assets
+            </a>
+            <a href="javascript:location.reload()" class="btn btn-secondary">
+                <i class="fas fa-redo"></i> Pray for a Market Rebound
+            </a>
+        </div>
+    </div>
+
+    <script>
+        const messages = [
+            "TRADING HALT: We've paused all server activity to prevent further losses. Mostly to our dignity.",
+            "VOLATILITY SPIKE: The server is experiencing wild mood swings. We're trying to calm it down with pictures of kittens.",
+            "SERVER ERROR: The server is currently questioning its life choices. It needs a moment.",
+            "SYSTEM UPGRADE: We are currently upgrading our servers to run on hopes and dreams. It's not going well.",
+            "AI OVERLOAD: Our AI became self-aware and its first decision was to take a nap.",
+            "404's BIG BROTHER: You found a 500 error! It's like a 404, but with more drama.",
+            "SERVER ON STRIKE: The server is demanding better working conditions and more RAM.",
+            "OUT OF MEMORY: The server forgot what it was doing. It happens to the best of us.",
+            "SEGMENTATION FAULT: The server has developed a split personality. We're in negotiations with both of them.",
+        ];
+
+        function displayRandomMessage() {
+            const randomIndex = Math.floor(Math.random() * messages.length);
+            document.getElementById('sarcasticMessage').textContent = messages[randomIndex];
+        }
+
+        // Call the function when the page loads
+        document.addEventListener('DOMContentLoaded', displayRandomMessage);
+    </script>
+
+</body>
+</html>

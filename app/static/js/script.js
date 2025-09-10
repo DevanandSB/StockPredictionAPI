@@ -1,5 +1,7 @@
 document.addEventListener('DOMContentLoaded', function () {
     // --- Element References ---
+    const exploreBtn = document.getElementById('explore-btn');
+    const appSection = document.getElementById('app-section');
     const companySearch = document.getElementById('company-search');
     const searchResults = document.getElementById('search-results');
     const analyzeBtn = document.getElementById('analyze-btn');
@@ -20,16 +22,24 @@ document.addEventListener('DOMContentLoaded', function () {
     let eventSource = null;
     let chartInstance = null;
 
+    // --- Smooth Scroll for Hero Button ---
+    if (exploreBtn && appSection) {
+        exploreBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            appSection.scrollIntoView({ behavior: 'smooth' });
+        });
+    }
+
     /**
- * Generates a random number from a standard normal distribution
- * using the Box-Muller transform.
- */
-function gaussianRandom() {
-    let u = 0, v = 0;
-    while(u === 0) u = Math.random(); //Converting [0,1) to (0,1)
-    while(v === 0) v = Math.random();
-    return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
-}
+     * Generates a random number from a standard normal distribution
+     * using the Box-Muller transform.
+     */
+    function gaussianRandom() {
+        let u = 0, v = 0;
+        while(u === 0) u = Math.random(); //Converting [0,1) to (0,1)
+        while(v === 0) v = Math.random();
+        return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    }
 
     // --- Dynamic Company Loading ---
     async function loadCompanies() {
@@ -53,7 +63,6 @@ function gaussianRandom() {
         }
     });
 
-    // Add event listener for Analyze button
     if (analyzeBtn) {
         analyzeBtn.addEventListener('click', function() {
             if (selectedSymbol) {
@@ -420,7 +429,7 @@ function gaussianRandom() {
                     </div>
                 </div>
                 <div class="card-footer text-muted">
-                    <small>Scroll to zoom • Drag to pan • Default view shows 20 days history + 10 days prediction</small>
+                    <small>Scroll to zoom • Drag to pan • Default view shows 90 days history + 30 days prediction</small>
                 </div>
             </div>
         `;
@@ -429,216 +438,161 @@ function gaussianRandom() {
         createProfessionalChart(prediction);
     }
 
-    /**
- * REPLACEMENT for createProfessionalChart
- * This version simplifies the series creation and adds markers for the AI's key prediction points.
- */
-function createProfessionalChart(prediction) {
-    const chartElement = document.getElementById('price-chart');
-    const loadingOverlay = document.getElementById('chart-loading');
+    function createProfessionalChart(prediction) {
+        const chartElement = document.getElementById('price-chart');
+        const loadingOverlay = document.getElementById('chart-loading');
 
-    loadingOverlay.style.display = 'flex';
+        loadingOverlay.style.display = 'flex';
 
-    if (chartInstance) {
-        chartInstance.remove();
-        chartInstance = null;
+        if (chartInstance) {
+            chartInstance.remove();
+            chartInstance = null;
+        }
+
+        setTimeout(() => {
+            try {
+                // *** MODIFIED: Changed chart options for dark theme ***
+                chartInstance = LightweightCharts.createChart(chartElement, {
+                    layout: {
+                        background: { type: 'solid', color: '#121212' }, // Dark background
+                        textColor: '#cccccc', // Light gray text
+                    },
+                    grid: {
+                        vertLines: { color: 'rgba(255, 255, 255, 0.1)' }, // Lighter grid lines
+                        horzLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                    },
+                    timeScale: { timeVisible: true, secondsVisible: false, borderColor: 'rgba(197, 203, 206, 0.5)' },
+                    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+                    localization: { priceFormatter: price => `₹${price.toFixed(2)}` }
+                });
+
+                // --- DATA PREPARATION ---
+                const historicalData = prepareHistoricalData(prediction.historical_data);
+
+                const historicalSeries = chartInstance.addLineSeries({
+                    color: 'rgba(0, 123, 255, 1)', // Blue for historical
+                    lineWidth: 2,
+                    title: 'Historical Price',
+                });
+                historicalSeries.setData(historicalData);
+
+                // --- PREDICTION LOGIC ---
+                if (historicalData.length > 0) {
+                    const lastHistoricalPoint = historicalData[historicalData.length - 1];
+                    const predictionPoints = getPredictionPoints(prediction);
+
+                    const predictionCurve = preparePredictionData(prediction, historicalData);
+
+                    // Add the prediction series
+                    const predictionSeries = chartInstance.addLineSeries({
+                        color: 'rgba(255, 138, 0, 1)', // Orange for prediction
+                        lineWidth: 2,
+                        lineStyle: LightweightCharts.LineStyle.Dashed,
+                        title: 'Predicted Path',
+                    });
+                    predictionSeries.setData(predictionCurve);
+
+                    // Add markers for clarity
+                    const markerData = predictionPoints.map(p => ({
+                        time: p.time,
+                        position: 'aboveBar',
+                        color: '#e91e63',
+                        shape: 'circle',
+                        text: `${p.horizon}\n₹${p.value.toFixed(2)}`,
+                        size: 1,
+                    }));
+                    markerData.unshift({
+                        time: lastHistoricalPoint.time,
+                        position: 'aboveBar',
+                        color: '#2962FF',
+                        shape: 'arrowUp',
+                        text: `Today\n₹${lastHistoricalPoint.value.toFixed(2)}`,
+                    });
+                    predictionSeries.setMarkers(markerData);
+                }
+
+                // Set default view
+                const today = new Date();
+                const ninetyDaysAgo = new Date(today);
+                ninetyDaysAgo.setDate(today.getDate() - 90);
+                const thirtyDaysFuture = new Date(today);
+                thirtyDaysFuture.setDate(today.getDate() + 30);
+
+                chartInstance.timeScale().setVisibleRange({
+                    from: Math.floor(ninetyDaysAgo.getTime() / 1000),
+                    to: Math.floor(thirtyDaysFuture.getTime() / 1000),
+                });
+
+                // --- EVENT LISTENERS ---
+                document.getElementById('reset-chart').addEventListener('click', () => chartInstance.timeScale().fitContent());
+                document.getElementById('show-all-chart').addEventListener('click', () => chartInstance.timeScale().fitContent());
+                document.getElementById('fullscreen-chart').addEventListener('click', () => chartElement.requestFullscreen());
+
+                loadingOverlay.style.display = 'none';
+
+            } catch (error) {
+                console.error('Error creating professional chart:', error);
+                loadingOverlay.style.display = 'none';
+                chartElement.innerHTML = `<div class="alert alert-danger m-3">Chart error: ${error.message}</div>`;
+            }
+        }, 100);
     }
 
-    setTimeout(() => {
-        try {
-            chartInstance = LightweightCharts.createChart(chartElement, {
-                // Chart options (same as your original code)...
-                layout: { background: { type: 'solid', color: '#ffffff' }, textColor: '#333333' },
-                grid: { vertLines: { color: 'rgba(42, 46, 57, 0.1)' }, horzLines: { color: 'rgba(42, 46, 57, 0.1)' } },
-                timeScale: { timeVisible: true, secondsVisible: false, borderColor: 'rgba(197, 203, 206, 0.8)' },
-                crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-                localization: { priceFormatter: price => `₹${price.toFixed(2)}` }
-            });
-
-            // --- DATA PREPARATION ---
-            const historicalData = prepareHistoricalData(prediction.historical_data);
-
-            const historicalSeries = chartInstance.addLineSeries({
-                color: 'rgba(0, 123, 255, 1)', // Blue for historical
-                lineWidth: 2,
-                title: 'Historical Price',
-            });
-            historicalSeries.setData(historicalData);
-
-            // --- PREDICTION LOGIC ---
-            if (historicalData.length > 0) {
-                const lastHistoricalPoint = historicalData[historicalData.length - 1];
-                const predictionPoints = getPredictionPoints(prediction);
-
-                const predictionCurve = preparePredictionData(prediction, historicalData);
-
-                // Add the prediction series (starts from the last historical point)
-                const predictionSeries = chartInstance.addLineSeries({
-                    color: 'rgba(255, 138, 0, 1)', // Orange for prediction
-                    lineWidth: 2,
-                    lineStyle: LightweightCharts.LineStyle.Dashed,
-                    title: 'Predicted Path',
-                });
-                predictionSeries.setData(predictionCurve);
-
-
-                // Add markers for the key AI prediction points for clarity
-                const markerData = predictionPoints.map(p => ({
-                    time: p.time,
-                    position: 'aboveBar',
-                    color: '#e91e63',
-                    shape: 'circle',
-                    text: `${p.horizon}\n₹${p.value.toFixed(2)}`,
-                    size: 1,
-                }));
-                 // Add the last historical point as a starting marker
-                markerData.unshift({
-                    time: lastHistoricalPoint.time,
-                    position: 'aboveBar',
-                    color: '#2962FF',
-                    shape: 'arrowUp',
-                    text: `Today\n₹${lastHistoricalPoint.value.toFixed(2)}`,
-                });
-                predictionSeries.setMarkers(markerData);
-            }
-
-            // Set default view: 90 days historic + 30 days prediction for better context
-            const today = new Date();
-            const ninetyDaysAgo = new Date(today);
-            ninetyDaysAgo.setDate(today.getDate() - 90);
-            const thirtyDaysFuture = new Date(today);
-            thirtyDaysFuture.setDate(today.getDate() + 30);
-
-            chartInstance.timeScale().setVisibleRange({
-                from: Math.floor(ninetyDaysAgo.getTime() / 1000),
-                to: Math.floor(thirtyDaysFuture.getTime() / 1000),
-            });
-
-            // --- EVENT LISTENERS (same as your original code) ---
-            document.getElementById('reset-chart').addEventListener('click', () => chartInstance.timeScale().fitContent());
-            document.getElementById('show-all-chart').addEventListener('click', () => chartInstance.timeScale().fitContent());
-            document.getElementById('fullscreen-chart').addEventListener('click', () => chartElement.requestFullscreen());
-            // ... (keep your other event listeners for fullscreen, resize, etc.)
-
-            loadingOverlay.style.display = 'none';
-
-        } catch (error) {
-            console.error('Error creating professional chart:', error);
-            loadingOverlay.style.display = 'none';
-            chartElement.innerHTML = `<div class="alert alert-danger m-3">Chart error: ${error.message}</div>`;
-        }
-    }, 100);
-}
-
-
-
     function prepareHistoricalData(historical_data) {
-        // Process REAL historical data from backend with intelligent downsampling
-        if (!historical_data || historical_data.length === 0) {
-            console.warn('No historical data provided');
-            return [];
-        }
-
-        // Sort data by date
+        if (!historical_data || historical_data.length === 0) return [];
         const sortedData = historical_data.sort((a, b) => new Date(a.time) - new Date(b.time));
-
-        // Intelligent downsampling based on data length
         let sampleRate = 1;
-        if (sortedData.length > 5000) {
-            sampleRate = 10; // For very long histories (20+ years)
-        } else if (sortedData.length > 2000) {
-            sampleRate = 5; // For long histories (8-20 years)
-        } else if (sortedData.length > 1000) {
-            sampleRate = 2; // For medium histories (4-8 years)
-        }
-
+        if (sortedData.length > 5000) sampleRate = 10;
+        else if (sortedData.length > 2000) sampleRate = 5;
+        else if (sortedData.length > 1000) sampleRate = 2;
         const downsampledData = [];
-
         for (let i = 0; i < sortedData.length; i += sampleRate) {
             downsampledData.push({
                 time: Math.floor(new Date(sortedData[i].time).getTime() / 1000),
                 value: parseFloat(sortedData[i].value)
             });
         }
-
-        console.log(`Downsampled from ${sortedData.length} to ${downsampledData.length} points (rate: ${sampleRate})`);
         return downsampledData;
     }
 
     function preparePredictionData(prediction, historicalData) {
         const data = [];
-
-        // If we have historical data, use the last point as our starting point
         let startDate, startPrice;
 
         if (historicalData && historicalData.length > 0) {
             const lastHistoricalPoint = historicalData[historicalData.length - 1];
             startDate = new Date(lastHistoricalPoint.time * 1000);
             startPrice = lastHistoricalPoint.value;
-
-            // Add the last historical point as the first prediction point to ensure continuity
-            data.push({
-                time: lastHistoricalPoint.time,
-                value: startPrice
-            });
+            data.push({ time: lastHistoricalPoint.time, value: startPrice });
         } else {
-            // Fallback to current date and price if no historical data
-            const today = new Date();
-            startDate = new Date(today);
+            startDate = new Date();
             startPrice = prediction.current_price;
-
-            // Ensure we use a trading day (skip if today is weekend)
             if (startDate.getDay() === 0 || startDate.getDay() === 6) {
-                // If today is weekend, move to next trading day (Monday)
                 startDate.setDate(startDate.getDate() + (startDate.getDay() === 0 ? 1 : 2));
             }
-
-            data.push({
-                time: Math.floor(startDate.getTime() / 1000),
-                value: startPrice
-            });
+            data.push({ time: Math.floor(startDate.getTime() / 1000), value: startPrice });
         }
 
         if (!prediction.predictions) return data;
-
-        // Get the key prediction points from the AI model
         const predictionPoints = getPredictionPoints(prediction);
-
         if (predictionPoints.length === 0) return data;
-
-        // Create realistic prediction curve using Brownian motion with drift
         const realisticPredictionData = createRealisticPredictionCurve(
-            predictionPoints,
-            startDate,
-            startPrice,
-            prediction.annual_volatility
+            predictionPoints, startDate, startPrice, prediction.annual_volatility
         );
-
         return data.concat(realisticPredictionData);
     }
 
     function getPredictionPoints(prediction) {
         const points = [];
         const today = new Date();
-
-        // Define the prediction horizons and their TRADING day offsets (approx)
         const horizons = {
-            "Next Day": 1,
-            "Next Week": 5,
-            "Next 15 Days": 15,
-            "Next 30 Days": 21,    // ~30 calendar days = ~21 trading days
-            "Next 3 Months": 63,   // 3 months = ~63 trading days
-            "Next 6 Months": 126,  // 6 months = ~126 trading days
-            "Next Year": 252,      // 1 year = 252 trading days
-            "Next 2 Years": 504    // 2 years = 504 trading days
+            "Next Day": 1, "Next Week": 5, "Next 15 Days": 15, "Next 30 Days": 21,
+            "Next 3 Months": 63, "Next 6 Months": 126, "Next Year": 252, "Next 2 Years": 504
         };
-
-        // Create prediction points from the actual model output
         for (const [horizon, tradingDays] of Object.entries(horizons)) {
             if (prediction.predictions[horizon]) {
                 const pred = prediction.predictions[horizon];
                 const futureDate = getFutureTradingDate(today, tradingDays);
-
                 points.push({
                     time: Math.floor(futureDate.getTime() / 1000),
                     value: pred.expected_price,
@@ -647,130 +601,63 @@ function createProfessionalChart(prediction) {
                 });
             }
         }
-
         return points.sort((a, b) => a.tradingDays - b.tradingDays);
     }
 
     function getFutureTradingDate(startDate, tradingDays) {
         let currentDate = new Date(startDate);
         let daysCount = 0;
-
         while (daysCount < tradingDays) {
             currentDate.setDate(currentDate.getDate() + 1);
-
-            // Skip weekends (Saturday = 6, Sunday = 0)
             if (currentDate.getDay() !== 0 && currentDate.getDay() !== 6) {
                 daysCount++;
             }
         }
-
         return currentDate;
     }
 
-/**
- * FINAL REPLACEMENT for createRealisticPredictionCurve
- * This version uses a "bridging" technique to ensure the simulated path
- * starts at the current price and ENDS EXACTLY at the AI's final target price.
- * It maintains realistic volatility throughout the path while guaranteeing accuracy at the end.
- */
-function createRealisticPredictionCurve(predictionPoints, startDate, startPrice, annualVolatility) {
-    const curve = [];
-    if (predictionPoints.length === 0) return curve;
+    function createRealisticPredictionCurve(predictionPoints, startDate, startPrice, annualVolatility) {
+        const curve = [];
+        if (predictionPoints.length === 0) return curve;
 
-    // --- 1. Set Simulation Parameters ---
-    const targetPoint = predictionPoints[predictionPoints.length - 1];
-    const simulationDays = targetPoint.tradingDays;
-    const targetPrice = targetPoint.value;
+        const targetPoint = predictionPoints[predictionPoints.length - 1];
+        const simulationDays = targetPoint.tradingDays;
+        const targetPrice = targetPoint.value;
 
-    if (simulationDays <= 0) return curve;
+        if (simulationDays <= 0) return curve;
 
-    const effectiveAnnualVolatility = (annualVolatility && annualVolatility > 0) ? annualVolatility : 25.0;
-    const dailyVolatility = (effectiveAnnualVolatility / 100) / Math.sqrt(252);
+        const effectiveAnnualVolatility = (annualVolatility && annualVolatility > 0) ? annualVolatility : 25.0;
+        const dailyVolatility = (effectiveAnnualVolatility / 100) / Math.sqrt(252);
+        const totalLogReturn = Math.log(targetPrice / startPrice);
 
-    // This is the ideal, smooth logarithmic path to the target
-    const totalLogReturn = Math.log(targetPrice / startPrice);
+        let currentPrice = startPrice;
+        let currentDate = new Date(startDate);
 
-    let currentPrice = startPrice;
-    let currentDate = new Date(startDate);
+        for (let i = 1; i <= simulationDays; i++) {
+            currentDate = getFutureTradingDate(currentDate, 1);
+            const drift = -0.5 * Math.pow(dailyVolatility, 2);
+            const randomShock = dailyVolatility * gaussianRandom();
+            let simulatedPrice = currentPrice * Math.exp(drift + randomShock);
 
+            const timeRemaining = simulationDays - i;
+            if (timeRemaining > 0) {
+                const idealPriceOnTrend = startPrice * Math.exp(totalLogReturn * (i / simulationDays));
+                const correctionDrift = Math.log(idealPriceOnTrend / simulatedPrice) * (1 / timeRemaining);
+                simulatedPrice = simulatedPrice * Math.exp(correctionDrift);
+            }
+            currentPrice = simulatedPrice;
 
-    // --- 2. Run the Bridged Simulation ---
-    for (let i = 1; i <= simulationDays; i++) {
-        currentDate = getFutureTradingDate(currentDate, 1);
-
-        // A) Calculate the random shock for one day of movement.
-        // We use a simplified drift here because the bridge will handle the trend.
-        const drift = -0.5 * Math.pow(dailyVolatility, 2); // Ito's process adjustment
-        const randomShock = dailyVolatility * gaussianRandom();
-        let simulatedPrice = currentPrice * Math.exp(drift + randomShock);
-
-        // B) The "Bridge" Correction: Force the path towards the target.
-        // As we get closer to the end date, this correction becomes stronger.
-        const timeRemaining = simulationDays - i;
-        if (timeRemaining > 0) {
-            // 1. Calculate the ideal price on the smooth path for the current day.
-            const idealPriceOnTrend = startPrice * Math.exp(totalLogReturn * (i / simulationDays));
-
-            // 2. Calculate the drift needed to pull our random path back to the ideal trend.
-            const correctionDrift = Math.log(idealPriceOnTrend / simulatedPrice) * (1 / timeRemaining);
-
-            // 3. Apply the correction.
-            simulatedPrice = simulatedPrice * Math.exp(correctionDrift);
+            curve.push({
+                time: Math.floor(currentDate.getTime() / 1000),
+                value: parseFloat(currentPrice.toFixed(2))
+            });
         }
 
-        currentPrice = simulatedPrice;
-
-        curve.push({
-            time: Math.floor(currentDate.getTime() / 1000),
-            value: parseFloat(currentPrice.toFixed(2))
-        });
-    }
-
-    // C) Final step: To combat any floating-point inaccuracies, manually set the last point.
-    if (curve.length > 0) {
-        curve[curve.length - 1].value = parseFloat(targetPrice.toFixed(2));
-    }
-
-    return curve;
-}
-
-    function gaussianRandom() {
-        // Box-Muller transform for Gaussian random numbers
-        let u = 0, v = 0;
-        while(u === 0) u = Math.random(); // Converting [0,1) to (0,1)
-        while(v === 0) v = Math.random();
-        return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
-    }
-
-    function updateChartTooltip(content, x, y) {
-        let tooltip = document.getElementById('chart-tooltip');
-        if (!tooltip) {
-            tooltip = document.createElement('div');
-            tooltip.id = 'chart-tooltip';
-            tooltip.className = 'chart-tooltip';
-            document.body.appendChild(tooltip);
+        if (curve.length > 0) {
+            curve[curve.length - 1].value = parseFloat(targetPrice.toFixed(2));
         }
 
-        if (content) {
-            tooltip.innerHTML = content;
-            tooltip.style.display = 'block';
-
-            const rect = tooltip.getBoundingClientRect();
-            const left = Math.min(x + 10, window.innerWidth - rect.width - 10);
-            const top = Math.min(y - rect.height / 2, window.innerHeight - rect.height - 10);
-
-            tooltip.style.left = left + 'px';
-            tooltip.style.top = top + 'px';
-        } else {
-            tooltip.style.display = 'none';
-        }
-    }
-
-    function hideChartTooltip() {
-        const tooltip = document.getElementById('chart-tooltip');
-        if (tooltip) {
-            tooltip.style.display = 'none';
-        }
+        return curve;
     }
 
     function updateProgress(progress, status) {
@@ -806,11 +693,13 @@ function createRealisticPredictionCurve(predictionPoints, startDate, startPrice,
         chartContainer.innerHTML = '';
         predictionCardsContainer.innerHTML = '';
         hideLoading();
-        hideChartTooltip();
     };
 
     const showError = (message) => {
-        errorAlert.textContent = `Error: ${message}`;
+        const errorMessageSpan = document.getElementById('error-message');
+        if (errorMessageSpan) {
+            errorMessageSpan.textContent = `Error: ${message}`;
+        }
         errorAlert.classList.remove('d-none');
         progressModal.hide();
         if (analyzeBtn) analyzeBtn.disabled = false;
@@ -827,26 +716,39 @@ function createRealisticPredictionCurve(predictionPoints, startDate, startPrice,
         return `${prefix}${parseInt(num).toLocaleString('en-IN')}`;
     };
 
-    // Debug function
-    function debugSearch() {
-        console.log('Companies loaded:', companies.length);
-        console.log('Selected symbol:', selectedSymbol);
-        console.log('Search value:', companySearch.value);
+    // --- Page Initialization Logic ---
+function initParticles() {
+    particlesJS('particles-js', {
+        particles: {
+            number: { value: 100, density: { enable: true, value_area: 800 } },
+            color: { value: "#8B5FBF" },
+            shape: { type: "circle" },
+            opacity: { value: 0.5, random: true },
+            size: { value: 3, random: true },
+            line_linked: { enable: true, distance: 150, color: "#8B5FBF", opacity: 0.3, width: 1 },
+            move: { enable: true, speed: 2, direction: "none", random: true, straight: false, out_mode: "out", bounce: false }
+        },
+        interactivity: {
+            detect_on: "canvas",
+            events: { onhover: { enable: true, mode: "repulse" }, onclick: { enable: true, mode: "push" }, resize: true }
+        },
+        retina_detect: true
+    });
+}
 
-        if (selectedSymbol) {
-            fetch(`/api/company/${selectedSymbol}`)
-                .then(response => {
-                    console.log('Manual API test - Status:', response.status);
-                    return response.json();
-                })
-                .then(data => console.log('Manual API test - Data:', data))
-                .catch(error => console.error('Manual API test - Error:', error));
+function initScrollAnimations() {
+    window.addEventListener('scroll', () => {
+        const header = document.querySelector('header');
+        if (window.scrollY > 50) {
+            header.classList.add('scrolled');
+        } else {
+            header.classList.remove('scrolled');
         }
-    }
-
-    // Make debug function available globally
-    window.debugSearch = debugSearch;
+    });
+}
 
     // --- Initializer ---
-    loadCompanies()
+    loadCompanies();
+    initParticles();
+    initScrollAnimations();
 });

@@ -91,8 +91,36 @@ async def read_root(request: Request):
     """
     Serves the main HTML page for the web interface.
     """
+    return templates.TemplateResponse("home.html", {"request": request, "companies": load_companies()})
+
+
+@app.get("/home", response_class=HTMLResponse, tags=["Web Interface"])
+async def read_home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request, "companies": load_companies()})
 
+@app.get("/designs", response_class=HTMLResponse, tags=["Web Interface"])
+async def read_home(request: Request):
+    return templates.TemplateResponse("working.html", {"request": request, "companies": load_companies()})
+
+@app.get("/features", response_class=HTMLResponse, tags=["Web Interface"])
+async def read_home(request: Request):
+    return templates.TemplateResponse("features.html", {"request": request, "companies": load_companies()})
+
+@app.get("/why-us", response_class=HTMLResponse, tags=["Web Interface"])
+async def read_home(request: Request):
+    return templates.TemplateResponse("why-us.html", {"request": request, "companies": load_companies()})
+
+@app.get("/privacy-policy", response_class=HTMLResponse, tags=["Web Interface"])
+async def read_home(request: Request):
+    return templates.TemplateResponse("privacy-policy.html", {"request": request, "companies": load_companies()})
+
+@app.get("/terms-and-conditions", response_class=HTMLResponse, tags=["Web Interface"])
+async def read_home(request: Request):
+    return templates.TemplateResponse("terms.html", {"request": request, "companies": load_companies()})
+
+@app.get("/contact-us", response_class=HTMLResponse, tags=["Web Interface"])
+async def read_home(request: Request):
+    return templates.TemplateResponse("contact.html", {"request": request, "companies": load_companies()})
 
 @app.get("/health", response_model=HealthCheck, tags=["Health"])
 async def health_check():
