@@ -1,12 +1,10 @@
-# Stage 1: Final image
-# We use the full python image to get build tools if needed
+# Use the full python image to get build tools if needed
 FROM python:3.11
 
 # Set the working directory
 WORKDIR /app
 
 # Install the TA-Lib C-library dependency first
-# This is the most reliable method for installing TA-Lib
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     wget \
@@ -25,25 +23,44 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy your requirements file
 COPY requirements.txt .
 
-# --- BATCH INSTALLATION TO MANAGE MEMORY ---
+# --- GRANULAR BATCH INSTALLATION TO MANAGE MEMORY ---
 
-# Batch 1: Install the heaviest ML libraries first (PyTorch, Transformers)
+# [cite_start]Batch 1: The heaviest ML libraries (PyTorch, Transformers) [cite: 1]
 RUN pip install --no-cache-dir \
-    torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu \
+    torch==2.8.0 --extra-index-url https://download.pytorch.org/whl/cpu \
     transformers==4.56.1 \
     tokenizers==0.22.0 \
     safetensors==0.6.2
 
-# Batch 2: Install the core data science stack
+# [cite_start]Batch 2: The core data science stack [cite: 1]
 RUN pip install --no-cache-dir \
     pandas==2.3.0 \
     numpy==2.3.1 \
     scikit-learn==1.7.1 \
     scipy==1.16.1 \
-    plotly==6.3.0
+    plotly==6.3.0 \
+    statsmodels==0.14.5
 
-# Batch 3: Install the remaining packages
-# This will be much lighter as the biggest dependencies are already installed.
+# [cite_start]Batch 3: Web framework and asynchronous libraries [cite: 1]
+RUN pip install --no-cache-dir \
+    fastapi==0.103.2 \
+    uvicorn==0.23.2 \
+    aiohttp==3.12.15 \
+    requests==2.31.0 \
+    Jinja2==3.1.4 \
+    gunicorn
+
+# [cite_start]Batch 4: Finance, NLP, and parsing libraries [cite: 1]
+RUN pip install --no-cache-dir \
+    yfinance==0.2.65 \
+    nsepy==0.8 \
+    TA-Lib==0.4.28 \
+    nltk==3.9.1 \
+    vaderSentiment==3.3.2 \
+    beautifulsoup4==4.12.2 \
+    lxml==5.3.1
+
+# Batch 5: The remaining packages. This final step is now much smaller and safer.
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of your application code
