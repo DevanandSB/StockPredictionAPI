@@ -6,9 +6,14 @@ WORKDIR /app
 # Copy the requirements file first to leverage Docker's build cache
 COPY requirements.txt .
 
-# Install all the Python dependencies from your requirements file
-# This will use the correct torch version because we are on Python 3.9
-RUN pip install --no-cache-dir -r requirements.txt
+# First install torch with the specific index
+RUN pip install --no-cache-dir torch==2.2.1+cpu --index-url https://download.pytorch.org/whl/cpu
+
+# Then install all other packages from PyPI
+RUN pip install --no-cache-dir fastapi uvicorn pandas numpy yfinance requests \
+    newsapi-python transformers nltk scikit-learn Jinja2 python-multipart \
+    beautifulsoup4 nsepy vaderSentiment googlesearch-python lightning-fabric \
+    talib-binary scipy arch plotly gunicorn google-cloud-storage
 
 # Copy the rest of your application's code into the container
 COPY . .
