@@ -4,9 +4,34 @@ WORKDIR /app
 
 COPY requirements.txt .
 
-# Install with older pip version that handles index-url correctly
-RUN pip install --no-cache-dir --upgrade "pip==23.3.2" && \
-    pip install --no-cache-dir -r requirements.txt
+# Install torch first with the specific index URL (without +cpu suffix)
+RUN pip install --no-cache-dir torch==2.2.1 --index-url https://download.pytorch.org/whl/cpu
+
+# Now install all other packages
+RUN pip install --no-cache-dir \
+    fastapi \
+    uvicorn \
+    pandas \
+    numpy \
+    yfinance \
+    requests \
+    newsapi-python \
+    transformers \
+    nltk \
+    scikit-learn \
+    Jinja2 \
+    python-multipart \
+    beautifulsoup4 \
+    nsepy \
+    vaderSentiment \
+    googlesearch-python \
+    lightning-fabric \
+    scipy \
+    arch \
+    plotly \
+    gunicorn \
+    google-cloud-storage \
+    talib-binary
 
 COPY . .
 
