@@ -2,30 +2,32 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies for TA-Lib
+# Install only essential system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Download and install TA-Lib from source
-RUN wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz && \
-    tar -xvzf ta-lib-0.4.0-src.tar.gz && \
-    cd ta-lib/ && \
-    ./configure --prefix=/usr && \
-    make && \
-    make install && \
-    cd .. && \
-    rm -rf ta-lib* ta-lib-0.4.0-src.tar.gz
-
 COPY requirements.txt .
 
-# Install all packages from requirements.txt (including exact versions)
+# Download pre-built TA-Lib wheel for Python 3.11
+RUN wget https://github.com/mrjbq7/ta-lib/releases/download/TA_Lib-0.6.7/TA_Lib-0.6.7-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl -O TA_Lib-0.6.7-cp311-cp311-manylinux2014_x86_64.whl
+
+# Install TA-Lib from pre-built wheel first
+RUN pip install --no-cache-dir TA_Lib-0.6.7-cp311-cp311-manylinux2014_x86_64.whl
+
+# Install torch with CPU version
+RUN pip install --no-cache-dir torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+
+# Install other packages in batches
+RUN pip install --no-cache-dir fastapi uvicorn pandas numpy requests scikit-learn Jinja2 gunicorn
+RUN pip install --no-cache-dir yfinance newsapi-python nltk python-multipart beautifulsoup4 nsepy
+RUN pip install --no-cache-dir vaderSentiment googlesearch-python scipy arch plotly google-cloud-storage
+
+# Install remaining packages from requirements.txt (excluding TA-Lib since we already installed it)
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
 EXPOSE 8000
 
-# Use fewer workers to reduce memory usage
 CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-w", "2", "-b", "0.0.0.0:8000", "app.main:app"]
