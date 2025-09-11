@@ -3,16 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>404 - StockSense</title>
+    <title>404 - Page Delisted | StockSense</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        /* --- EMBEDDED THEME STYLES --- */
         :root {
             --primary: #8B5FBF;
             --primary-dark: #6A3093;
@@ -24,21 +19,28 @@
             --light: #ffffff;
             --gray: #cccccc;
             --gray-dark: #888888;
+            --success: #00cc88;
+            --danger: #ff3860;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
         body {
-            background: linear-gradient(-45deg, #0a0a0a, #121212, #1a1035, #2d1b4e);
+            background: linear-gradient(-45deg, var(--darker), var(--dark), #1a1035, #2d1b4e);
             background-size: 400% 400%;
             animation: gradientBG 15s ease infinite;
             color: var(--light);
             font-family: 'Inter', sans-serif;
-            min-height: 100vh; /* Corrected: Allows body to grow */
+            min-height: 100vh;
             display: flex;
-            flex-direction: column;
             justify-content: center;
             align-items: center;
             text-align: center;
-            padding: 2rem 0; /* Added: Better spacing when scrolling */
+            padding: 2rem;
         }
 
         @keyframes gradientBG {
@@ -49,26 +51,37 @@
 
         .container {
             max-width: 800px;
-            padding: 2rem;
+            width: 100%;
             z-index: 10;
         }
 
+        /* --- 404 PAGE SPECIFIC STYLES --- */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(139, 95, 191, 0.3);
+            border-radius: 16px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            animation: fadeIn 1.5s ease-out;
+        }
+
         .error-code {
-            font-size: 10rem;
+            font-size: 8rem;
             font-weight: 800;
-            background: linear-gradient(45deg, var(--red), var(--primary), var(--green));
+            background: linear-gradient(45deg, var(--primary-dark), var(--accent));
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
             margin-bottom: 1rem;
             text-shadow: 0 5px 15px rgba(139, 95, 191, 0.4);
             animation: pulse 2s infinite;
-            position: relative;
         }
 
         @keyframes pulse {
             0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
+            50% { transform: scale(1.02); }
             100% { transform: scale(1); }
         }
 
@@ -76,29 +89,23 @@
             font-size: 2.5rem;
             margin-bottom: 1.5rem;
             color: var(--light);
-            animation: fadeIn 1s ease-out;
         }
 
         .error-message {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             color: var(--gray);
-            margin-bottom: 2.5rem;
+            margin-bottom: 1.5rem;
             line-height: 1.6;
-            max-width: 600px;
-            animation: slideUp 1s ease-out;
         }
 
         .stock-ticker {
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(0, 0, 0, 0.2);
             border-radius: 10px;
             padding: 15px;
-            margin: 2rem auto;
-            width: 90%;
-            max-width: 500px;
-            border: 1px solid rgba(139, 95, 191, 0.3);
+            margin: 1.5rem auto;
+            border: 1px solid rgba(139, 95, 191, 0.2);
             overflow: hidden;
             position: relative;
-            animation: fadeIn 1.5s ease-out;
         }
 
         .ticker-container {
@@ -114,60 +121,16 @@
         }
 
         .stock-up {
-            color: var(--green);
+            color: var(--success);
         }
 
         .stock-down {
-            color: var(--red);
+            color: var(--accent);
         }
 
         @keyframes tickerScroll {
             0% { transform: translateX(0); }
             100% { transform: translateX(-100%); }
-        }
-
-        .chart-container {
-            margin: 2rem 0;
-            height: 150px;
-            position: relative;
-            animation: fadeIn 2s ease-out;
-        }
-
-        .crash-chart {
-            width: 100%;
-            height: 100%;
-            position: relative;
-        }
-
-        .chart-line {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            background: var(--red);
-            transform-origin: left;
-            animation: drawChart 3s ease-out forwards;
-        }
-
-        @keyframes drawChart {
-            0% { transform: scaleX(0); }
-            100% { transform: scaleX(1); }
-        }
-
-        .chart-point {
-            position: absolute;
-            width: 12px;
-            height: 12px;
-            background: var(--red);
-            border-radius: 50%;
-            transform: translate(-50%, 50%);
-            animation: blink 2s infinite;
-        }
-
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
         }
 
         .action-buttons {
@@ -176,7 +139,6 @@
             justify-content: center;
             flex-wrap: wrap;
             margin-top: 2rem;
-            animation: fadeIn 1.5s ease-out;
         }
 
         .btn {
@@ -184,7 +146,7 @@
             align-items: center;
             padding: 12px 30px;
             background: linear-gradient(90deg, var(--primary), var(--primary-dark));
-            color: var(--light);
+            color: var(--light) !important;
             text-decoration: none;
             border-radius: 50px;
             font-weight: 600;
@@ -202,23 +164,16 @@
         .btn-outline {
             background: transparent;
             border: 2px solid var(--primary);
-            color: var(--primary);
+            color: var(--primary) !important;
         }
 
         .btn-outline:hover {
             background: rgba(139, 95, 191, 0.1);
         }
 
-        .sarcastic-quote {
-            margin-top: 2rem;
-            font-style: italic;
-            color: var(--gray-dark);
-            animation: fadeIn 2s ease-out;
-        }
-
         .market-crash-alert {
-            background: linear-gradient(90deg, rgba(255, 56, 96, 0.1), rgba(139, 95, 191, 0.1));
-            border: 1px solid var(--red);
+            background: linear-gradient(90deg, rgba(163, 126, 186, 0.1), rgba(139, 95, 191, 0.1));
+            border: 1px solid var(--primary);
             border-radius: 8px;
             padding: 15px;
             margin: 1.5rem 0;
@@ -226,152 +181,87 @@
         }
 
         @keyframes alertPulse {
-            0%, 100% { box-shadow: 0 0 10px rgba(255, 56, 96, 0.3); }
-            50% { box-shadow: 0 0 20px rgba(255, 56, 96, 0.6); }
-        }
-
-        .financial-advice {
-            background: rgba(139, 95, 191, 0.1);
-            border-left: 4px solid var(--primary);
-            padding: 15px;
-            margin: 1.5rem 0;
-            text-align: left;
-            border-radius: 4px;
+            0%, 100% { box-shadow: 0 0 10px rgba(139, 95, 191, 0.3); }
+            50% { box-shadow: 0 0 20px rgba(139, 95, 191, 0.6); }
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
         }
 
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* Responsive design */
         @media (max-width: 768px) {
-            .error-code {
-                font-size: 8rem;
-            }
-
-            .error-title {
-                font-size: 2rem;
-            }
-
-            .btn {
-                padding: 10px 20px;
-            }
-        }
-
-        @media (max-width: 480px) {
             .error-code {
                 font-size: 6rem;
             }
-
             .error-title {
-                font-size: 1.8rem;
+                font-size: 2rem;
             }
-
-            .error-message {
-                font-size: 1rem;
-            }
-
-            .action-buttons {
-                flex-direction: column;
-                align-items: center;
-            }
-
-            .btn {
-                width: 100%;
-                max-width: 250px;
-                justify-content: center;
+            .glass-card {
+                padding: 1.5rem;
             }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1 class="error-code">404</h1>
-        <h2 class="error-title">Page Not Found - Stock Crashed!</h2>
+        <div class="glass-card">
+            <h1 class="error-code">404</h1>
+            <h2 class="error-title">This Page Has Been Delisted</h2>
 
-        <div class="market-crash-alert">
-            <i class="fas fa-exclamation-triangle"></i>
-            ALERT: The page you're looking for has been delisted from our server.
-        </div>
-
-        <p class="error-message">
-            Looks like this page got hit with a market correction.
-            Our AI predicted it would be here, but even our algorithms aren't perfect
-            (despite what our marketing says).
-        </p>
-
-        <div class="chart-container">
-            <div class="crash-chart">
-                <div class="chart-line"></div>
-                <div class="chart-point" style="left: 10%; bottom: 80%;"></div>
-                <div class="chart-point" style="left: 30%; bottom: 50%;"></div>
-                <div class="chart-point" style="left: 50%; bottom: 30%;"></div>
-                <div class="chart-point" style="left: 70%; bottom: 10%;"></div>
-                <div class="chart-point" style="left: 90%; bottom: 5%;"></div>
+            <div class="market-crash-alert">
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Market Alert:</strong> This asset has been delisted for failing to meet performance requirements.
             </div>
-        </div>
 
-        <div class="stock-ticker">
-            <div class="ticker-container">
-                <div class="ticker-item">
-                    <span>PAGE404</span>
-                    <span class="stock-down">-100% <i class="fas fa-arrow-down"></i></span>
-                </div>
-                <div class="ticker-item">
-                    <span>ROUTER</span>
-                    <span class="stock-down">-42% <i class="fas fa-arrow-down"></i></span>
-                </div>
-                <div class="ticker-item">
-                    <span>SERVER</span>
-                    <span class="stock-up">+3% <i class="fas fa-arrow-up"></i></span>
-                </div>
-                <div class="ticker-item">
-                    <span>URL</span>
-                    <span class="stock-down">-67% <i class="fas fa-arrow-down"></i></span>
-                </div>
-                <div class="ticker-item">
-                    <span>HYPERLINK</span>
-                    <span class="stock-down">-88% <i class="fas fa-arrow-down"></i></span>
+            <p class="error-message">
+                Our analysts have issued a "STRONG SELL" for this URL. It seems this page has been hit by a hostile takeover of nothingness.
+            </p>
+
+            <div class="stock-ticker">
+                <div class="ticker-container">
+                    <div class="ticker-item">
+                        <span>PAGE404</span>
+                        <span class="stock-down">-100% <i class="fas fa-arrow-down"></i></span>
+                    </div>
+                    <div class="ticker-item">
+                        <span>ROUTER</span>
+                        <span class="stock-down">-42% <i class="fas fa-arrow-down"></i></span>
+                    </div>
+                    <div class="ticker-item">
+                        <span>SERVER</span>
+                        <span class="stock-up">+3% <i class="fas fa-arrow-up"></i></span>
+                    </div>
+                    <div class="ticker-item">
+                        <span>URL</span>
+                        <span class="stock-down">-67% <i class="fas fa-arrow-down"></i></span>
+                    </div>
+                    <div class="ticker-item">
+                        <span>HYPERLINK</span>
+                        <span class="stock-down">-88% <i class="fas fa-arrow-down"></i></span>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="financial-advice">
-            <strong>Investment Advice:</strong> Diversify your browsing portfolio by trying one of these working pages instead.
+            <div class="action-buttons">
+                <a href="/" class="btn">
+                    <i class="fas fa-chart-line me-2"></i>Go to Main Exchange
+                </a>
+                <a href="javascript:history.back()" class="btn btn-outline">
+                    <i class="fas fa-undo me-2"></i>Go Back
+                </a>
+            </div>
         </div>
-
-        <div class="action-buttons">
-            <a href="/" class="btn">
-                <i class="fas fa-chart-line me-2"></i>Back to Trading
-            </a>
-            <a href="javascript:history.back()" class="btn btn-outline">
-                <i class="fas fa-undo me-2"></i>Short This Page
-            </a>
-        </div>
-
-        <p class="sarcastic-quote">
-            "This 404 page has better returns than my actual stock portfolio." - Probably someone, somewhere
-        </p>
     </div>
 
     <script>
         // Duplicate ticker items for seamless scrolling
         document.addEventListener('DOMContentLoaded', function() {
             const tickerContainer = document.querySelector('.ticker-container');
-            const tickerItems = tickerContainer.innerHTML;
-            tickerContainer.innerHTML += tickerItems;
+            if (tickerContainer) {
+                const tickerItems = tickerContainer.innerHTML;
+                tickerContainer.innerHTML += tickerItems;
+            }
         });
     </script>
 </body>

@@ -1246,4 +1246,140 @@ It gives a fantasy or magical feel to the design.
     }
 }
 
+/* --- Enhanced Video Player Section --- */
+.video-container {
+    position: relative;
+    padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+    height: 0;
+    overflow: hidden;
+    border-radius: 16px;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(139,95,191,0.3);
+    background: var(--darker);
+    transition: all 0.3s ease;
+}
 
+.video-container:hover {
+    box-shadow: 0 20px 50px rgba(139,95,191,0.4), 0 0 0 2px rgba(139,95,191,0.5);
+    transform: translateY(-5px);
+}
+
+.video-container video {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    min-width: 100%;
+    min-height: 100%;
+    width: auto;
+    height: auto;
+    transform: translate(-50%, -50%) scale(1.03);
+    object-fit: cover;
+    filter: brightness(0.95) contrast(1.05);
+    border-radius: 16px;
+}
+
+.video-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg,
+        rgba(139, 95, 191, 0.1) 0%,
+        rgba(106, 48, 147, 0.2) 50%,
+        rgba(139, 95, 191, 0.1) 100%);
+    pointer-events: none;
+    border-radius: 16px;
+    z-index: 2;
+}
+
+/* Magical sparkle effect for the video container */
+.video-sparkle {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    background-image:
+        radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.8) 1px, transparent 1px),
+        radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.6) 1px, transparent 1px),
+        radial-gradient(circle at 40% 70%, rgba(255, 255, 255, 0.7) 1px, transparent 1px),
+        radial-gradient(circle at 60% 80%, rgba(255, 255, 255, 0.5) 1px, transparent 1px);
+    background-size: 100% 100%;
+    opacity: 0.3;
+    animation: sparkle 3s infinite alternate;
+    pointer-events: none;
+    z-index: 3;
+    border-radius: 16px;
+}
+
+/* Play button overlay */
+.video-play-button {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80px;
+    height: 80px;
+    background: rgba(139, 95, 191, 0.8);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 4;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 0 0 rgba(139, 95, 191, 0.6);
+    animation: pulse 2s infinite;
+}
+
+.video-play-button:hover {
+    background: rgba(139, 95, 191, 1);
+    transform: translate(-50%, -50%) scale(1.1);
+}
+
+.video-play-button i {
+    color: white;
+    font-size: 30px;
+    margin-left: 5px;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(139, 95, 191, 0.6);
+    }
+    70% {
+        box-shadow: 0 0 0 15px rgba(139, 95, 191, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(139, 95, 191, 0);
+    }
+}
+
+/* Loading state for video */
+.video-loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(10, 10, 10, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+    border-radius: 16px;
+}
+
+.video-loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid rgba(139, 95, 191, 0.3);
+    border-radius: 50%;
+    border-top: 5px solid var(--primary);
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
