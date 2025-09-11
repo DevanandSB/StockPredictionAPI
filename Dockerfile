@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.10-slim
 
 WORKDIR /app
 
@@ -31,7 +31,7 @@ RUN pip install --no-cache-dir \
     plotly \
     gunicorn \
     google-cloud-storage \
-    talib-binary
+    pandas-ta  # Using pandas-ta instead
 
 COPY . .
 

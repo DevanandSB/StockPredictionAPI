@@ -21,4 +21,4 @@ arch
 plotly
 gunicorn
 google-cloud-storage
-talib-binary
+pandas-ta  # Replace talib-binary with pandas-ta
