@@ -2,15 +2,26 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Install system dependencies for TA-Lib
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Download and install TA-Lib from source
+RUN wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz && \
+    tar -xvzf ta-lib-0.4.0-src.tar.gz && \
+    cd ta-lib/ && \
+    ./configure --prefix=/usr && \
+    make && \
+    make install && \
+    cd .. && \
+    rm -rf ta-lib* ta-lib-0.4.0-src.tar.gz
+
 COPY requirements.txt .
 
-# Install torch first with the specific index URL (smaller version)
-RUN pip install --no-cache-dir torch==1.13.1+cpu --index-url https://download.pytorch.org/whl/cpu
-
-# Install packages in batches to reduce memory usage
-RUN pip install --no-cache-dir fastapi uvicorn pandas numpy requests scikit-learn Jinja2 gunicorn
-RUN pip install --no-cache-dir yfinance newsapi-python nltk python-multipart beautifulsoup4 nsepy
-RUN pip install --no-cache-dir vaderSentiment googlesearch-python scipy arch plotly google-cloud-storage ta
+# Install all packages from requirements.txt (including exact versions)
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
