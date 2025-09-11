@@ -1,10 +1,10 @@
-FROM python:3.10-slim
+FROM python:3.11-slim
 
 WORKDIR /app
 
 COPY requirements.txt .
 
-# Install torch first with the specific index URL (without +cpu suffix)
+# Install torch first with the specific index URL
 RUN pip install --no-cache-dir torch==2.2.1 --index-url https://download.pytorch.org/whl/cpu
 
 # Now install all other packages
