@@ -1,26 +1,43 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install minimal system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    && rm -rf /var/lib/apt/lists/*
-
 COPY requirements.txt .
 
-# Install TA-Lib first using pip (it will find the appropriate wheel)
-RUN pip install --no-cache-dir TA-Lib==0.6.7
+# First install core packages
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir \
+    fastapi==0.103.2 \
+    uvicorn==0.23.2 \
+    pandas==2.3.0 \
+    numpy==2.3.1 \
+    requests==2.31.0 \
+    scikit-learn==1.7.1 \
+    Jinja2==3.1.4 \
+    gunicorn \
+    yfinance==0.2.65 \
+    nltk==3.9.1 \
+    python-multipart==0.0.20 \
+    beautifulsoup4==4.12.2 \
+    vaderSentiment==3.3.2 \
+    googlesearch-python==1.3.0 \
+    scipy==1.16.1 \
+    plotly==6.3.0 \
+    google-cloud-storage
 
 # Install torch with CPU version
 RUN pip install --no-cache-dir torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
 
-# Install packages in batches to reduce memory usage
-RUN pip install --no-cache-dir fastapi uvicorn pandas numpy requests scikit-learn Jinja2 gunicorn
-RUN pip install --no-cache-dir yfinance newsapi-python nltk python-multipart beautifulsoup4 nsepy
-RUN pip install --no-cache-dir vaderSentiment googlesearch-python scipy arch plotly google-cloud-storage
+# Install pandas-ta with its dependencies
+RUN pip install --no-cache-dir numba tqdm pandas-ta==0.4.67b0
 
-# Install remaining packages from requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+# Install remaining packages
+RUN pip install --no-cache-dir \
+    newsapi-python==0.2.7 \
+    nsepy==0.8 \
+    arch==7.2.0 \
+    transformers==4.56.1 \
+    lightning-fabric==2.5.5
 
 COPY . .
 
