@@ -33,6 +33,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.exception_handler(404)
+async def not_found(request: Request, exc: HTTPException):
+    return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
+
+@app.exception_handler(500)
+async def server_error(request: Request, exc: HTTPException):
+    return templates.TemplateResponse("500.html", {"request": request}, status_code=500)
+
 
 def load_companies() -> List[Dict[str, str]]:
     """
