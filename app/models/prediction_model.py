@@ -9,7 +9,8 @@ from typing import Dict, Any, AsyncGenerator, Tuple
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-import talib
+#import talib
+tablib = None
 import torch
 from arch import arch_model
 from plotly.subplots import make_subplots

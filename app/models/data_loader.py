@@ -1,5 +1,6 @@
 import pandas as pd
-import talib
+#import talib
+talib = None
 import yfinance as yf
 
 
