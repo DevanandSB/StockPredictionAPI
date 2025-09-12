@@ -1,15 +1,20 @@
-FROM python:3.12-slim
+FROM python:3.11-slim
 
 WORKDIR /app
 
 COPY docker_requirements.txt .
 
-# Install all packages at once
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r docker_requirements.txt
+# Upgrade pip first
+RUN pip install --no-cache-dir --upgrade pip
 
-# Install torch with CPU version
-RUN pip install --no-cache-dir torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+# Install CPU-only PyTorch first
+RUN pip install --no-cache-dir torch==2.8.0+cpu --index-url https://download.pytorch.org/whl/cpu
+
+# Install packages in batches
+RUN pip install --no-cache-dir fastapi uvicorn pandas numpy requests scikit-learn Jinja2 gunicorn
+RUN pip install --no-cache-dir yfinance newsapi-python nltk python-multipart beautifulsoup4 nsepy
+RUN pip install --no-cache-dir vaderSentiment googlesearch-python scipy arch plotly google-cloud-storage
+RUN pip install --no-cache-dir transformers lightning-fabric
 
 COPY . .
 
