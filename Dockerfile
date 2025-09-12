@@ -18,6 +18,9 @@ RUN pip install --no-cache-dir transformers lightning-fabric
 
 COPY . .
 
-EXPOSE 8000
+# Use PORT environment variable (Digital Ocean uses 8080)
+ENV PORT=8080
+EXPOSE 8080
 
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-w", "2", "-b", "0.0.0.0:8000", "app.main:app"]
+# Use fewer workers to save memory
+CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-w", "1", "--timeout", "120", "-b", "0.0.0.0:8080", "app.main:app"]
