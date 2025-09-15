@@ -11,6 +11,8 @@
     <link rel="stylesheet" href="/static/css/style.css">
 
     <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/confetti-js@0.0.18/dist/index.min.js"></script>
+
     <style>
         .policy-container {
             background: rgba(255, 255, 255, 0.05);
@@ -67,6 +69,16 @@
             transform: translateY(-3px);
             box-shadow: 0 15px 40px rgba(139, 95, 191, 0.5);
         }
+        /* Styles for Confetti Canvas */
+        #confetti-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Allows clicks to pass through */
+            z-index: 1050; /* Above modal content */
+        }
     </style>
 </head>
 <body>
@@ -120,7 +132,7 @@
                         <p class="text-white-50">Nothing</p>
                         <p class="text-white-50">Your name? Don't know it. Your email? Wouldn't know where to store it. Your search history? Our server forgets things faster than you do.</p>
                         <p class="text-white-50">Think of us as the most secure platform on Earth, protected by the powerful magic of an empty bank account.</p>
-                        
+
                         <h3 style="color: var(--primary);" class="mb-3 mt-5">2. What We Do With Your Data</h3>
                         <p class="text-white-50">We would do absolutely nothing, because we have nothing.</p>
                         <p class="text-white-50">Our AI is smart, but it's not a spy. It only knows about the stock market, not about you.</p>
@@ -131,7 +143,7 @@
                             <p class="text-white-50">This is awkward, but we need your help. Our developer can't afford Azure Cloud, so this whole amazing AI runs on hopes and dreams.</p>
                             <p class="text-white-50">If you donate, we promise to buy a real server. Then we can collect your data and write a proper, boring privacy policy just like the big companies!</p>
 
-                            <a href="#" class="donation-btn text-white">
+                            <a href="#" id="donate-btn" class="donation-btn text-white">
                                 <i class="fas fa-hand-holding-heart me-2"></i>Please Donate For Servers
                             </a>
                         </div>
@@ -145,6 +157,55 @@
             </div>
         </div>
     </section>
+
+    <div class="modal fade" id="qrModal" tabindex="-1" aria-labelledby="qrModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content text-center">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="qrModalLabel">Please Donate for our servers</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" style="position: relative;">
+                    <canvas id="confetti-canvas"></canvas>
+                    <div id="payment-step-1">
+                        <div id="desktop-payment" class="d-none d-md-block">
+                            <p>Scan the QR code with your UPI app.</p>
+                            <img id="qrCodeImg" src="" alt="QR Code" class="img-fluid mb-3" style="max-width: 250px;">
+                        </div>
+                        <div id="mobile-payment" class="d-block d-md-none">
+                            <p>Click the button below to pay using your UPI app.</p>
+                            <a id="upi-payment-link" href="#" class="btn btn-contact">
+                                <i class="fas fa-mobile-alt me-2"></i>Pay with UPI App
+                            </a>
+                        </div>
+                        <hr>
+                        <div class="mt-3">
+                            <label for="transaction-id" class="form-label">Enter UPI Transaction ID</label>
+                            <input type="text" class="form-control void-textarea" id="transaction-id" placeholder="Enter the 12-digit ID after payment" maxlength="12">
+                            <div id="validation-error" class="text-danger mt-2" style="display: none;">Please enter a valid 12-digit UPI Transaction ID.</div>
+                            <button id="verify-payment-btn" class="btn btn-contact mt-2">Verify & Secure Your "Privacy"
+</button>
+                        </div>
+                    </div>
+                    <div id="payment-step-2" style="display: none;">
+                        <div class="contact-icon" style="color: #4CAF50;"><i class="fas fa-check-circle"></i></div>
+                        <h4 style="color: #4CAF50; font-size: 2.5rem; animation: pulse 1s infinite alternate;">Payment Successful! 🎉</h4>
+                        <p class="lead">You just made a developer very happy!</p>
+                        <p>Your privacy is now officially "secured". Thank you for your contribution to our server fund!</p>
+                        <h3 class="fw-bold" style="letter-spacing: 2px; font-size: 2rem;">Your Privacy is "Guaranteed"</h3>
+                        <p class="text-danger mt-3 fw-bold">Warning: This guarantee is not legally binding. If you close this pop-up, your privacy might be at risk again. 😉</p>
+                    </div>
+                    <div id="pay-again-step" style="display: none;">
+                        <div class="contact-icon text-danger"><i class="fas fa-face-sad-tear"></i></div>
+                        <h4 class="text-white">Well, this is awkward...</h4>
+                        <p class="text-white-50">I already said don't close it. Now you have to pay again.</p>
+                        <button id="pay-again-btn" class="btn btn-contact mt-2">Fine, I'll Pay Again</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <footer>
         <div class="container">
@@ -183,6 +244,66 @@
             } else {
                 header.classList.remove('scrolled');
             }
+        });
+        let paymentVerified = false;
+
+        document.getElementById('donate-btn').addEventListener('click', function(e) {
+            e.preventDefault();
+            const qrModal = new bootstrap.Modal(document.getElementById('qrModal'));
+
+            if (paymentVerified) {
+                document.getElementById('payment-step-1').style.display = 'none';
+                document.getElementById('payment-step-2').style.display = 'none';
+                document.getElementById('pay-again-step').style.display = 'block';
+            } else {
+                const upiLink = "upi://pay?pa=6382389338@idfcfirst&pn=Devanand%20S%20B&am=15000&cu=INR";
+                const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiLink)}`;
+
+                document.getElementById('qrCodeImg').src = qrCodeUrl;
+                document.getElementById('upi-payment-link').href = upiLink;
+
+                document.getElementById('payment-step-1').style.display = 'block';
+                document.getElementById('payment-step-2').style.display = 'none';
+                document.getElementById('pay-again-step').style.display = 'none';
+                document.getElementById('transaction-id').value = '';
+                document.getElementById('validation-error').style.display = 'none';
+            }
+
+            qrModal.show();
+        });
+
+        document.getElementById('verify-payment-btn').addEventListener('click', function() {
+            const transactionIdInput = document.getElementById('transaction-id');
+            const validationError = document.getElementById('validation-error');
+            const transactionId = transactionIdInput.value.trim();
+
+            const isValidFormat = /^\d{12}$/.test(transactionId);
+            const isRepeating = /^(.)\1{11}$/.test(transactionId);
+            const isSequentialAsc = /012345678901|123456789012|234567890123|345678901234|456789012345|567890123456|678901234567|789012345678|890123456789|901234567890/.test(transactionId);
+            const isSequentialDesc = /109876543210|210987654321|321098765432|432109876543|543210987654|654321098765|765432109876|876543210987|987654321098/.test(transactionId);
+
+            if (isValidFormat && !isRepeating && !isSequentialAsc && !isSequentialDesc) {
+                validationError.style.display = 'none';
+                document.getElementById('payment-step-1').style.display = 'none';
+                document.getElementById('payment-step-2').style.display = 'block';
+
+                paymentVerified = true;
+
+                const confettiSettings = { target: 'confetti-canvas' };
+                const confetti = new ConfettiGenerator(confettiSettings);
+                confetti.render();
+
+                setTimeout(() => confetti.clear(), 5000);
+
+            } else {
+                validationError.style.display = 'block';
+                transactionIdInput.focus();
+            }
+        });
+
+        document.getElementById('pay-again-btn').addEventListener('click', function() {
+            paymentVerified = false;
+            document.getElementById('donate-btn').click();
         });
     </script>
 
