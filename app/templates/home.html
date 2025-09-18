@@ -138,32 +138,6 @@
         </div>
     </section>
 
-<section class="main-content" style="background: var(--darker);">
-    <div class="container">
-        <h2 class="section-title" style="text-align: center; font-size: 48px; margin-bottom: 80px; font-weight: 700;">See StockSense in Action</h2>
-        <div class="row justify-content-center">
-            <div class="col-lg-10">
-                <div class="video-container">
-                    <div class="video-sparkle"></div>
-                    <div class="video-loading" style="display: none;">
-                        <div class="video-loading-spinner"></div>
-                    </div>
-                    <div class="video-play-button">
-                        <i class="fas fa-play"></i>
-                    </div>
-                    <video class="w-100">
-                        <source src="/static/videos/demo.mp4" type="video/mp4">
-                        Your browser does not support the video tag.
-                    </video>
-                    <div class="video-overlay"></div>
-                </div>
-                <p class="text-center mt-4 text-white-50">Watch how StockSense helps investors avoid common pitfalls and make smarter investment decisions.</p>
-            </div>
-        </div>
-    </div>
-</section>
-
-
     <section id="why-us" class="main-content" style="background: var(--dark);">
         <div class="container">
             <h2 class="section-title" style="text-align: center; font-size: 48px; margin-bottom: 80px; font-weight: 700;">Why Investors Choose Us</h2>
@@ -235,56 +209,6 @@
         } else {
             header.classList.remove('scrolled');
         }
-    });
-
-    // Video player functionality
-    document.addEventListener('DOMContentLoaded', function() {
-        const videoContainer = document.querySelector('.video-container');
-        if (!videoContainer) return;
-
-        const video = videoContainer.querySelector('video');
-        const playButton = videoContainer.querySelector('.video-play-button');
-        const loadingOverlay = videoContainer.querySelector('.video-loading');
-
-        // Hide native controls initially for better aesthetics
-        video.removeAttribute('controls');
-
-        // Play button click handler
-        playButton.addEventListener('click', function() {
-            // Show loading state
-            loadingOverlay.style.display = 'flex';
-            playButton.style.display = 'none';
-
-            // Play video
-            video.play().then(() => {
-                // Show native controls when playing
-                video.setAttribute('controls', 'true');
-                loadingOverlay.style.display = 'none';
-            }).catch(error => {
-                console.error('Error playing video:', error);
-                loadingOverlay.style.display = 'none';
-                playButton.style.display = 'flex';
-            });
-        });
-
-        // When video ends, show play button again
-        video.addEventListener('ended', function() {
-            video.removeAttribute('controls');
-            playButton.style.display = 'flex';
-        });
-
-        // If user pauses video, ensure controls stay visible
-        video.addEventListener('pause', function() {
-            if (!video.ended) {
-                video.setAttribute('controls', 'true');
-            }
-        });
-
-        // Show play button again if video fails to load
-        video.addEventListener('error', function() {
-            loadingOverlay.style.display = 'none';
-            playButton.style.display = 'flex';
-        });
     });
 </script>
 
