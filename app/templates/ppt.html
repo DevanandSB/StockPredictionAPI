@@ -160,7 +160,6 @@
             text-align: center;
         }
 
-        /* THIS IS THE NEW RULE TO CENTER THE CONTENT PERFECTLY */
         #apex-slide .slide-content {
             display: flex;
             justify-content: center;
@@ -228,17 +227,24 @@
                 padding: 0 6%;
                 align-items: center;
                 text-align: center;
+                justify-content: center; /* Vertically center content by default on mobile */
             }
+            /* Helper class to align long slides to the top for scrolling */
+            .slide.align-top-mobile {
+                justify-content: flex-start;
+            }
+
             .slide-content {
                 align-items: center;
-                padding-top: 60px;
+                padding-top: 40px;
+                padding-bottom: 80px;
             }
 
             /* --- Responsive Typography --- */
             .slide h1 { font-size: 2.5rem; }
             .slide .subtitle { font-size: 1.2rem; }
             .slide .author { margin-top: 2.5rem; font-size: 1.1rem; }
-            .slide h3 { font-size: 2rem; }
+            .slide h3 { font-size: 1.8rem; }
             .slide p { font-size: 1rem; line-height: 1.7; }
             .slide ul { text-align: left; }
             .slide li { font-size: 1rem; }
@@ -267,7 +273,7 @@
             /* --- Fix "Apex" Slide for Mobile --- */
             #apex-slide .slide-content {
                 justify-content: flex-start;
-                height: auto; /* Reset height for mobile */
+                height: auto;
             }
             #apex-slide .apex-container {
                 position: static;
@@ -285,6 +291,25 @@
                 transform: none !important;
                 animation: fadeIn 0.6s ease-out 0.5s both !important;
                 animation-delay: 0.5s !important;
+            }
+
+            /* --- Compacting the Apex Slide for Mobile --- */
+            #apex-slide h3 {
+                font-size: 1.8rem;
+            }
+            #apex-slide .apex-container {
+                gap: 1.2rem;
+                margin-top: 1.5rem;
+            }
+            #apex-slide .apex-feature i {
+                font-size: 2.2rem;
+                margin-bottom: 0.5rem;
+            }
+            #apex-slide .apex-feature h4 {
+                font-size: 1.1rem;
+            }
+            #apex-slide .apex-feature p {
+                font-size: 0.9rem;
             }
 
             /* --- Controls --- */
@@ -359,7 +384,7 @@
                 </div>
             </section>
 
-            <section class="slide">
+            <section class="slide align-top-mobile">
                 <div class="slide-content">
                     <h2>The Result</h2>
                     <h3>Exceptional Performance Achieved</h3>
@@ -383,7 +408,7 @@
                 </div>
             </section>
 
-            <section class="slide">
+            <section class="slide align-top-mobile">
                 <div class="slide-content">
                     <h2>Conclusion & Future Work</h2>
                     <h3>A Powerful, Data-Driven Solution</h3>
@@ -403,7 +428,7 @@
                 </div>
             </section>
 
-            <section class="slide" id="apex-slide">
+            <section class="slide align-top-mobile" id="apex-slide">
                 <div class="slide-content">
                     <div class="apex-container">
                         <div class="apex-center">
