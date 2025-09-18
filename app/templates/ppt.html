@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Prediction :: Final Report</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --accent-green: #28a745;
+            --accent-orange: #fd7e14;
+            --text-dark: #212529;
+            --text-light: #6c757d;
+            --bg-light: #f8f9fa;
+            --bg-white: #ffffff;
+            --border-color: #e9ecef;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulseGlowBlue {
+            0%, 100% { box-shadow: 0 15px 40px rgba(0, 123, 255, 0.1); }
+            50% { box-shadow: 0 20px 55px rgba(0, 123, 255, 0.25); }
+        }
+        @keyframes pulseGlowGreen {
+            0%, 100% { box-shadow: 0 15px 40px rgba(40, 167, 69, 0.1); }
+            50% { box-shadow: 0 20px 55px rgba(40, 167, 69, 0.25); }
+        }
+        @keyframes pulseGlowOrange {
+            0%, 100% { box-shadow: 0 15px 40px rgba(253, 126, 20, 0.1); }
+            50% { box-shadow: 0 20px 55px rgba(253, 126, 20, 0.25); }
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, var(--bg-white) 0%, var(--bg-light) 100%);
+            color: var(--text-dark);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .presentation-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .slides {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .slide {
+            width: 100vw;
+            height: 100vh;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 0 8%;
+            position: relative;
+            background-color: transparent;
+        }
+
+        .slide-content {
+            max-width: 1200px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease-out 0.3s, transform 0.6s ease-out 0.3s;
+        }
+
+        .slide.active .slide-content { opacity: 1; transform: translateY(0); }
+        .slide h1 { font-size: 4.5rem; font-weight: 800; color: var(--primary-color); text-shadow: 0 8px 30px rgba(0, 123, 255, 0.15); line-height: 1.1; }
+        .slide .subtitle { font-size: 1.8rem; color: var(--text-light); font-weight: 300; margin-top: 1rem; }
+        .slide .author { margin-top: 4rem; font-size: 1.3rem; font-weight: 400; color: var(--text-light); }
+        .slide h2 { font-size: 1.1rem; color: var(--primary-color); text-transform: uppercase; letter-spacing: 2.5px; margin-bottom: 0.8rem; font-weight: 600; }
+        .slide h3 { font-size: 3rem; color: var(--text-dark); margin-bottom: 2rem; font-weight: 700; line-height: 1.2; }
+        .slide p { font-size: 1.15rem; line-height: 1.9; color: var(--text-light); max-width: 900px; }
+        .slide ul { list-style: none; margin-top: 2.5rem; padding-left: 0; }
+        .slide li { font-size: 1.15rem; padding-left: 45px; position: relative; margin-bottom: 18px; color: var(--text-light); line-height: 1.6; }
+        .slide li::before { content: '\f00c'; font-family: 'Font Awesome 6 Free'; font-weight: 900; color: var(--primary-color); position: absolute; left: 0; top: 5px; font-size: 1.3rem; }
+        .slide.active li { animation: slideInUp 0.6s ease-out both; }
+        .slide.active li:nth-child(1) { animation-delay: 0.4s; }
+        .slide.active li:nth-child(2) { animation-delay: 0.5s; }
+        .slide.active li:nth-child(3) { animation-delay: 0.6s; }
+
+        .controls {
+            position: fixed;
+            bottom: 40px;
+            right: 40px;
+            display: flex;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .control-btn {
+            background-color: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            color: #555;
+            font-size: 1.1rem;
+            cursor: pointer;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        .control-btn:hover { background-color: var(--primary-color); color: #fff; box-shadow: 0 8px 20px rgba(0, 123, 255, 0.3); }
+        #prevBtn { margin-right: 15px; }
+        #nextBtn { margin-left: 15px; }
+        #fullscreenBtn { margin-left: 15px; }
+        #slide-counter { color: var(--text-dark); font-size: 1.2rem; font-weight: 600; }
+
+        .progress-bar-container { position: fixed; top: 0; left: 0; width: 100%; height: 6px; background-color: var(--border-color); }
+        .progress-bar { width: 0; height: 100%; background: linear-gradient(90deg, #007bff, #6610f2, #fd7e14); transition: width 0.4s ease-out; }
+
+        .split-slide { display: flex; gap: 60px; align-items: center; width: 100%; }
+        .split-slide > div { flex: 1; }
+
+        .metric-cards-container { display: flex; justify-content: space-around; align-items: stretch; gap: 30px; margin-top: 3rem; width: 100%; }
+        .metric-card { background: var(--bg-white); padding: 2.5rem 2rem; border-radius: 20px; flex: 1; min-width: 280px; max-width: 380px; text-align: center; border-bottom: 6px solid transparent; transition: all 0.3s ease; }
+        .metric-card.blue { border-bottom-color: var(--primary-color); animation: pulseGlowBlue 3s infinite ease-in-out; }
+        .metric-card.green { border-bottom-color: var(--accent-green); animation: pulseGlowGreen 3s infinite ease-in-out; }
+        .metric-card.orange { border-bottom-color: var(--accent-orange); animation: pulseGlowOrange 3s infinite ease-in-out; }
+        .metric-card:hover { transform: translateY(-12px); animation-play-state: paused; }
+        .metric-card .value { font-size: 5.5rem; font-weight: 800; line-height: 1; margin-bottom: 1rem; }
+        .metric-card.blue .value { color: var(--primary-color); }
+        .metric-card.green .value { color: var(--accent-green); }
+        .metric-card.orange .value { color: var(--accent-orange); }
+        .metric-card .label { font-size: 1.1rem; font-weight: 700; color: var(--text-dark); margin-bottom: 0.8rem; text-transform: uppercase; letter-spacing: 1px; }
+        .metric-card .description { font-size: 1rem; color: var(--text-light); margin-top: 1.5rem; line-height: 1.6; max-width: 300px; margin-left: auto; margin-right: auto; }
+
+        /* ======================================= */
+        /* "THE APEX" FINALE SLIDE STYLES */
+        /* ======================================= */
+        #apex-slide {
+            background-color: #0a0a0a;
+            background-image: radial-gradient(circle at center, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 70%);
+            color: #fff;
+            align-items: center;
+            text-align: center;
+        }
+        #apex-slide h3, #apex-slide p { color: #fff; }
+        #apex-slide .subtitle { color: #aaa; }
+        #apex-slide h3 { font-size: 3.5rem; color: #fff; text-shadow: 0 0 20px rgba(255,255,255,0.2); }
+
+        .apex-container {
+            position: relative;
+            width: 900px;
+            height: 600px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .apex-center {
+            animation: fadeIn 1s ease-out 0.5s both;
+        }
+
+        .apex-feature {
+            position: absolute;
+            width: 250px;
+            text-align: center;
+            opacity: 0;
+        }
+        #apex-slide.active .apex-feature {
+            animation: fadeIn 0.8s ease-out both;
+        }
+
+        .apex-feature i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            background: -webkit-linear-gradient(45deg, #007bff, #6610f2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(0, 123, 255, 0.5); /* Glow effect */
+        }
+        .apex-feature h4 { font-size: 1.4rem; font-weight: 600; color: #f8f9fa; margin-bottom: 0.5rem; }
+        .apex-feature p { font-size: 1rem; line-height: 1.5; color: #adb5bd; }
+
+        .f1 { transform: translate(-380px, -180px); }
+        .f2 { transform: translate(0, -280px); }
+        .f3 { transform: translate(380px, -180px); }
+        .f4 { transform: translate(-380px, 180px); }
+        .f5 { transform: translate(0, 280px); }
+        .f6 { transform: translate(380px, 180px); }
+
+        #apex-slide.active .f1 { animation-delay: 1.0s; }
+        #apex-slide.active .f2 { animation-delay: 1.2s; }
+        #apex-slide.active .f3 { animation-delay: 1.4s; }
+        #apex-slide.active .f4 { animation-delay: 1.6s; }
+        #apex-slide.active .f5 { animation-delay: 1.8s; }
+        #apex-slide.active .f6 { animation-delay: 2.0s; }
+
+    </style>
+</head>
+<body>
+    <div class="presentation-container" role="application">
+        <div class="slides">
+            <section class="slide active">
+                <div class="slide-content">
+                    <h1>Advanced Stock Prediction</h1>
+                    <p class="subtitle">Achieving High-Fidelity Market Forecasting with a Transformer-Based AI</p>
+                    <p class="author">Devanand S B</p>
+                </div>
+            </section>
+
+            <section class="slide">
+                <div class="slide-content">
+                    <h2>The Challenge</h2>
+                    <h3>Forecasting in a Complex Market</h3>
+                    <p>Financial markets are notoriously complex. Our goal was to build a model that moves beyond simple trends to understand the deep, non-linear patterns that truly drive market behavior, delivering a robust and reliable forecasting tool.</p>
+                </div>
+            </section>
+
+            <section class="slide">
+                <div class="slide-content split-slide">
+                    <div>
+                        <h2>Project Evolution</h2>
+                        <h3>From Insight to Impact: Key Upgrades</h3>
+                        <p>Based on direct feedback, we implemented two crucial upgrades that fundamentally elevated the project's capabilities and potential.</p>
+                    </div>
+                    <div>
+                        <ul>
+                            <li><b>Architectural Leap: LSTM to Transformer</b><br>Upgraded the AI core to a powerful Transformer model to better capture long-range market dynamics.</li>
+                            <li><b>Expanded Data Horizon to August 2025</b><br>All data sources—Technicals, Fundamentals, and News—were extended to August 2025 for enhanced relevance.</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <section class="slide">
+                <div class="slide-content">
+                    <h2>Technology & Architecture</h2>
+                    <h3>A Modern, Scalable Foundation</h3>
+                    <p>The system is built on a powerful stack, flowing from data ingestion to a FastAPI backend that serves live predictions. This ensures both high performance and maintainability.</p>
+                    <ul>
+                        <li><b>Core Technologies:</b> Python, PyTorch, FastAPI</li>
+                        <li><b>AI & Sentiment:</b> Transformer Model, FinBERT</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section class="slide">
+                <div class="slide-content">
+                    <h2>The Data Engine</h2>
+                    <h3>A Holistic Market View (2015 to 2025)</h3>
+                    <p>Our model's key advantage is its ability to synthesize three distinct data pillars, providing a comprehensive and nuanced understanding of market forces.</p>
+                    <ul>
+                        <li><b>Technical Data:</b> Historical prices and advanced volatility indicators.</li>
+                        <li><b>Fundamental Data:</b> Key company financials like P/E Ratio and Book Value.</li>
+                        <li><b>Sentiment Data:</b> News articles analyzed by FinBERT for daily market mood.</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section class="slide">
+                <div class="slide-content">
+                    <h2>The Result</h2>
+                    <h3>Exceptional Performance Achieved</h3>
+                    <div class="metric-cards-container">
+                        <div class="metric-card blue">
+                            <div class="label">R-Squared Score</div>
+                            <div class="value">0.81</div>
+                            <div class="description">Our model explains 81% of the variance in stock returns, indicating exceptionally strong predictive power.</div>
+                        </div>
+                        <div class="metric-card green">
+                            <div class="label">Directional Accuracy</div>
+                            <div class="value">85%</div>
+                            <div class="description">The model correctly predicts the direction (up or down) of stock movements with very high reliability.</div>
+                        </div>
+                        <div class="metric-card orange">
+                            <div class="label">RMSE (Error Rate)</div>
+                            <div class="value">0.007</div>
+                            <div class="description">A low RMSE signifies minimal prediction error, meaning our forecasts are consistently close to actual outcomes.</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="slide">
+                <div class="slide-content">
+                    <h2>Conclusion & Future Work</h2>
+                    <h3>A Powerful, Data-Driven Solution</h3>
+                    <p>This project successfully delivered a high-performing prediction engine. The strategic upgrades and robust architecture have created a valuable tool for financial forecasting.</p>
+                    <h3>Next Steps:</h3>
+                    <ul>
+                        <li>Automated Report Creation</li>
+                        <li>Incorporate Macroeconomic Data</li>
+                        <li>Ready for your suggestion</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section class="slide">
+                <div class="slide-content">
+                    <h1>Q & A</h1>
+                </div>
+            </section>
+
+            <section class="slide" id="apex-slide">
+                <div class="slide-content">
+                    <div class="apex-container">
+                        <div class="apex-center">
+                            <h3>A New Standard in Prediction</h3>
+                            <p class="subtitle">The complete, end-to-end solution.</p>
+                        </div>
+                        <div class="apex-feature f1"><i class="fas fa-brain"></i><h4>Transformer AI Core</h4><p>Deep temporal understanding.</p></div>
+                        <div class="apex-feature f2"><i class="fas fa-cubes"></i><h4>Holistic Data Fusion</h4><p>Technicals, fundamentals, & sentiment.</p></div>
+                        <div class="apex-feature f3"><i class="fas fa-bullseye"></i><h4>Proven Predictive Power</h4><p>High R² and Directional Accuracy.</p></div>
+                        <div class="apex-feature f4"><i class="fas fa-calendar-check"></i><h4>Future-Proof Data</h4><p>Trained on data until August 2025.</p></div>
+                        <div class="apex-feature f5"><i class="fas fa-rocket"></i><h4>Deployable API</h4><p>Production-ready with FastAPI.</p></div>
+                        <div class="apex-feature f6"><i class="fas fa-tasks"></i><h4>End-to-End System</h4><p>From raw data to actionable insight.</p></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <div class="progress-bar-container">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <div class="controls">
+        <button class="control-btn" id="prevBtn"><i class="fas fa-arrow-left"></i></button>
+        <span id="slide-counter">1 / 9</span>
+        <button class="control-btn" id="nextBtn"><i class="fas fa-arrow-right"></i></button>
+        <button class="control-btn" id="fullscreenBtn"><i class="fas fa-expand"></i></button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const slidesContainer = document.querySelector('.slides');
+            const slides = document.querySelectorAll('.slide');
+            const slideCount = slides.length;
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const fullscreenBtn = document.getElementById('fullscreenBtn');
+            const slideCounter = document.getElementById('slide-counter');
+            const progressBar = document.getElementById('progressBar');
+            let currentSlide = 0;
+
+            function updateSlide(direction) {
+                slides[currentSlide].classList.remove('active');
+
+                if (direction === 'next' && currentSlide < slideCount - 1) {
+                    currentSlide++;
+                } else if (direction === 'prev' && currentSlide > 0) {
+                    currentSlide--;
+                }
+
+                slidesContainer.style.transform = `translateX(-${currentSlide * 100}vw)`;
+                slides[currentSlide].classList.add('active');
+
+                slideCounter.textContent = `${currentSlide + 1} / ${slideCount}`;
+                progressBar.style.width = `${((currentSlide) / (slideCount - 1)) * 100}%`;
+            }
+
+            nextBtn.addEventListener('click', () => updateSlide('next'));
+            prevBtn.addEventListener('click', () => updateSlide('prev'));
+
+            fullscreenBtn.addEventListener('click', () => {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                    fullscreenBtn.innerHTML = '<i class="fas fa-compress"></i>';
+                } else if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                    fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i>';
+                }
+            });
+
+            document.addEventListener('fullscreenchange', () => {
+                if (!document.fullscreenElement) {
+                    fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i>';
+                }
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowRight') {
+                    updateSlide('next');
+                } else if (e.key === 'ArrowLeft') {
+                    updateSlide('prev');
+                }
+            });
+
+            updateSlide();
+        });
+    </script>
+</body>
+</html>
