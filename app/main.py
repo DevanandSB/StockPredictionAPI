@@ -106,6 +106,12 @@ async def read_root(request: Request):
 async def read_home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request, "companies": load_companies()})
 
+
+@app.get("/intro", response_class=HTMLResponse, tags=["Web Interface"])
+async def read_home(request: Request):
+    return templates.TemplateResponse("intro.html", {"request": request, "companies": load_companies()})
+
+
 @app.get("/mid-sem-ppt", response_class=HTMLResponse, tags=["Web Interface"])
 async def read_home(request: Request):
     return templates.TemplateResponse("ppt.html", {"request": request, "companies": load_companies()})

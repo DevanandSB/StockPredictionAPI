@@ -70,13 +70,17 @@
             padding: 0 8%;
             position: relative;
             background-color: transparent;
+            overflow-y: auto;
         }
 
         .slide-content {
             max-width: 1200px;
+            width: 100%;
             opacity: 0;
             transform: translateY(20px);
             transition: opacity 0.6s ease-out 0.3s, transform 0.6s ease-out 0.3s;
+            padding-top: 40px;
+            padding-bottom: 100px;
         }
 
         .slide.active .slide-content { opacity: 1; transform: translateY(0); }
@@ -88,6 +92,7 @@
         .slide p { font-size: 1.15rem; line-height: 1.9; color: var(--text-light); max-width: 900px; }
         .slide ul { list-style: none; margin-top: 2.5rem; padding-left: 0; }
         .slide li { font-size: 1.15rem; padding-left: 45px; position: relative; margin-bottom: 18px; color: var(--text-light); line-height: 1.6; }
+        .slide li b { color: var(--text-dark); }
         .slide li::before { content: '\f00c'; font-family: 'Font Awesome 6 Free'; font-weight: 900; color: var(--primary-color); position: absolute; left: 0; top: 5px; font-size: 1.3rem; }
         .slide.active li { animation: slideInUp 0.6s ease-out both; }
         .slide.active li:nth-child(1) { animation-delay: 0.4s; }
@@ -145,7 +150,7 @@
         .metric-card .description { font-size: 1rem; color: var(--text-light); margin-top: 1.5rem; line-height: 1.6; max-width: 300px; margin-left: auto; margin-right: auto; }
 
         /* ======================================= */
-        /* "THE APEX" FINALE SLIDE STYLES */
+        /* "THE APEX" FINALE SLIDE STYLES (DESKTOP) */
         /* ======================================= */
         #apex-slide {
             background-color: #0a0a0a;
@@ -154,6 +159,16 @@
             align-items: center;
             text-align: center;
         }
+
+        /* THIS IS THE NEW RULE TO CENTER THE CONTENT PERFECTLY */
+        #apex-slide .slide-content {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            padding: 0;
+        }
+
         #apex-slide h3, #apex-slide p { color: #fff; }
         #apex-slide .subtitle { color: #aaa; }
         #apex-slide h3 { font-size: 3.5rem; color: #fff; text-shadow: 0 0 20px rgba(255,255,255,0.2); }
@@ -186,7 +201,7 @@
             background: -webkit-linear-gradient(45deg, #007bff, #6610f2);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 30px rgba(0, 123, 255, 0.5); /* Glow effect */
+            text-shadow: 0 0 30px rgba(0, 123, 255, 0.5);
         }
         .apex-feature h4 { font-size: 1.4rem; font-weight: 600; color: #f8f9fa; margin-bottom: 0.5rem; }
         .apex-feature p { font-size: 1rem; line-height: 1.5; color: #adb5bd; }
@@ -204,6 +219,83 @@
         #apex-slide.active .f4 { animation-delay: 1.6s; }
         #apex-slide.active .f5 { animation-delay: 1.8s; }
         #apex-slide.active .f6 { animation-delay: 2.0s; }
+
+        /* ======================================= */
+        /* MOBILE OPTIMISATIONS */
+        /* ======================================= */
+        @media (max-width: 768px) {
+            .slide {
+                padding: 0 6%;
+                align-items: center;
+                text-align: center;
+            }
+            .slide-content {
+                align-items: center;
+                padding-top: 60px;
+            }
+
+            /* --- Responsive Typography --- */
+            .slide h1 { font-size: 2.5rem; }
+            .slide .subtitle { font-size: 1.2rem; }
+            .slide .author { margin-top: 2.5rem; font-size: 1.1rem; }
+            .slide h3 { font-size: 2rem; }
+            .slide p { font-size: 1rem; line-height: 1.7; }
+            .slide ul { text-align: left; }
+            .slide li { font-size: 1rem; }
+
+            /* --- Responsive Layouts --- */
+            .split-slide {
+                flex-direction: column;
+                gap: 30px;
+                text-align: center;
+            }
+            .split-slide > div { flex-basis: auto; }
+
+            .metric-cards-container {
+                flex-direction: column;
+                align-items: center;
+                gap: 25px;
+            }
+            .metric-card {
+                min-width: 90%;
+                max-width: 400px;
+                padding: 2rem 1.5rem;
+            }
+            .metric-card .value { font-size: 3.5rem; }
+            .metric-card .description { font-size: 0.95rem; }
+
+            /* --- Fix "Apex" Slide for Mobile --- */
+            #apex-slide .slide-content {
+                justify-content: flex-start;
+                height: auto; /* Reset height for mobile */
+            }
+            #apex-slide .apex-container {
+                position: static;
+                width: 100%;
+                height: auto;
+                display: flex;
+                flex-direction: column;
+                gap: 25px;
+                margin-top: 2rem;
+            }
+            #apex-slide .apex-center { animation: none; }
+            #apex-slide .apex-feature {
+                position: static;
+                width: 100%;
+                transform: none !important;
+                animation: fadeIn 0.6s ease-out 0.5s both !important;
+                animation-delay: 0.5s !important;
+            }
+
+            /* --- Controls --- */
+            .controls {
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                right: auto;
+            }
+            #fullscreenBtn { display: none; }
+        }
 
     </style>
 </head>
@@ -354,11 +446,15 @@
             let currentSlide = 0;
 
             function updateSlide(direction) {
+                if ((direction === 'next' && currentSlide >= slideCount - 1) || (direction === 'prev' && currentSlide <= 0)) {
+                    return;
+                }
+
                 slides[currentSlide].classList.remove('active');
 
-                if (direction === 'next' && currentSlide < slideCount - 1) {
+                if (direction === 'next') {
                     currentSlide++;
-                } else if (direction === 'prev' && currentSlide > 0) {
+                } else if (direction === 'prev') {
                     currentSlide--;
                 }
 
@@ -374,16 +470,18 @@
 
             fullscreenBtn.addEventListener('click', () => {
                 if (!document.fullscreenElement) {
-                    document.documentElement.requestFullscreen();
-                    fullscreenBtn.innerHTML = '<i class="fas fa-compress"></i>';
+                    document.documentElement.requestFullscreen().catch(err => {
+                        console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+                    });
                 } else if (document.exitFullscreen) {
                     document.exitFullscreen();
-                    fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i>';
                 }
             });
 
             document.addEventListener('fullscreenchange', () => {
-                if (!document.fullscreenElement) {
+                if (document.fullscreenElement) {
+                    fullscreenBtn.innerHTML = '<i class="fas fa-compress"></i>';
+                } else {
                     fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i>';
                 }
             });
@@ -396,7 +494,10 @@
                 }
             });
 
-            updateSlide();
+            // Initial setup
+            slides[currentSlide].classList.add('active');
+            slideCounter.textContent = `${currentSlide + 1} / ${slideCount}`;
+            progressBar.style.width = '0%';
         });
     </script>
 </body>
