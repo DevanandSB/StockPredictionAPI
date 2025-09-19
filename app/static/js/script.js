@@ -1,4 +1,65 @@
 document.addEventListener('DOMContentLoaded', function () {
+    // --- Enhanced Mobile Navigation Logic (v2) ---
+    function initMobileNavigation() {
+        const hamburger = document.querySelector('.hamburger');
+        const navLinks = document.querySelector('.nav-links');
+        const body = document.body;
+        const icon = hamburger ? hamburger.querySelector('i') : null;
+
+        // Exit if essential elements are missing
+        if (!hamburger || !navLinks || !icon) {
+            console.error('Mobile navigation elements not found. Navigation will not function.');
+            return;
+        }
+
+        // Create backdrop element
+        const backdrop = document.createElement('div');
+        backdrop.className = 'nav-backdrop';
+        document.body.appendChild(backdrop);
+
+        const closeNav = () => {
+            if (navLinks.classList.contains('active')) {
+                navLinks.classList.remove('active');
+                backdrop.classList.remove('active');
+                body.classList.remove('no-scroll');
+                icon.classList.remove('fa-times');
+                icon.classList.add('fa-bars');
+            }
+        };
+
+        const openNav = () => {
+            navLinks.classList.add('active');
+            backdrop.classList.add('active');
+            body.classList.add('no-scroll');
+            icon.classList.remove('fa-bars');
+            icon.classList.add('fa-times');
+        };
+
+        hamburger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isOpen = navLinks.classList.contains('active');
+            if (isOpen) {
+                closeNav();
+            } else {
+                openNav();
+            }
+        });
+
+        // Add event listeners to close the menu
+        backdrop.addEventListener('click', closeNav);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeNav();
+            }
+        });
+        document.querySelectorAll('.nav-links a').forEach(link => {
+            link.addEventListener('click', closeNav);
+        });
+    }
+
+    // Initialize mobile navigation
+    initMobileNavigation();
+
     // --- Element References ---
     const exploreBtn = document.getElementById('explore-btn');
     const appSection = document.getElementById('app-section');
@@ -55,13 +116,15 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // --- Event Listeners ---
-    companySearch.addEventListener('input', handleSearchInput);
-    companySearch.addEventListener('focus', handleSearchInput);
-    document.addEventListener('click', (e) => {
-        if (!companySearch.contains(e.target) && !searchResults.contains(e.target)) {
-            searchResults.classList.remove('active');
-        }
-    });
+    if (companySearch) {
+        companySearch.addEventListener('input', handleSearchInput);
+        companySearch.addEventListener('focus', handleSearchInput);
+        document.addEventListener('click', (e) => {
+            if (!companySearch.contains(e.target) && !searchResults.contains(e.target)) {
+                searchResults.classList.remove('active');
+            }
+        });
+    }
 
     if (analyzeBtn) {
         analyzeBtn.addEventListener('click', function() {
@@ -717,35 +780,35 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     // --- Page Initialization Logic ---
-function initParticles() {
-    particlesJS('particles-js', {
-        particles: {
-            number: { value: 100, density: { enable: true, value_area: 800 } },
-            color: { value: "#8B5FBF" },
-            shape: { type: "circle" },
-            opacity: { value: 0.5, random: true },
-            size: { value: 3, random: true },
-            line_linked: { enable: true, distance: 150, color: "#8B5FBF", opacity: 0.3, width: 1 },
-            move: { enable: true, speed: 2, direction: "none", random: true, straight: false, out_mode: "out", bounce: false }
-        },
-        interactivity: {
-            detect_on: "canvas",
-            events: { onhover: { enable: true, mode: "repulse" }, onclick: { enable: true, mode: "push" }, resize: true }
-        },
-        retina_detect: true
-    });
-}
+    function initParticles() {
+        particlesJS('particles-js', {
+            particles: {
+                number: { value: 100, density: { enable: true, value_area: 800 } },
+                color: { value: "#8B5FBF" },
+                shape: { type: "circle" },
+                opacity: { value: 0.5, random: true },
+                size: { value: 3, random: true },
+                line_linked: { enable: true, distance: 150, color: "#8B5FBF", opacity: 0.3, width: 1 },
+                move: { enable: true, speed: 2, direction: "none", random: true, straight: false, out_mode: "out", bounce: false }
+            },
+            interactivity: {
+                detect_on: "canvas",
+                events: { onhover: { enable: true, mode: "repulse" }, onclick: { enable: true, mode: "push" }, resize: true }
+            },
+            retina_detect: true
+        });
+    }
 
-function initScrollAnimations() {
-    window.addEventListener('scroll', () => {
-        const header = document.querySelector('header');
-        if (window.scrollY > 50) {
-            header.classList.add('scrolled');
-        } else {
-            header.classList.remove('scrolled');
-        }
-    });
-}
+    function initScrollAnimations() {
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('header');
+            if (window.scrollY > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+        });
+    }
 
     // --- Initializer ---
     loadCompanies();

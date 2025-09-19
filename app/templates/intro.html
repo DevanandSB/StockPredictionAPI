@@ -561,7 +561,9 @@
         }
 
         document.querySelectorAll('.next-btn').forEach(btn => btn.addEventListener('click', () => navigateTo(parseInt(btn.dataset.next))));
-        document.getElementById('final-cta').addEventListener('click', () => alert('Launching StockSense AI!'));
+document.getElementById('final-cta').addEventListener('click', () => {
+    window.location.href = '/home';
+});
 
         let lastScrollTime = 0;
         const scrollThrottleTime = 1500;
