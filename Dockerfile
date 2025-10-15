@@ -16,7 +16,7 @@ RUN pip install --no-cache-dir yfinance newsapi-python nltk python-multipart bea
 RUN pip install --no-cache-dir vaderSentiment googlesearch-python scipy arch plotly google-cloud-storage
 RUN pip install --no-cache-dir transformers lightning-fabric
 
-COPY sw.js .
+COPY app/sw.js .
 COPY . .
 
 # Use PORT environment variable (Digital Ocean uses 8080)
