@@ -186,7 +186,7 @@ async def get_company_data(symbol: str):
 @app.get('/sw.js', include_in_schema=False)
 def serve_sw():
     # The path needs to point to the file's location inside the container
-    return FileResponse('/code/sw.js')
+    return FileResponse('/app/sw.js')
 
 @app.post("/api/predict/{symbol}", tags=["Prediction"])
 async def predict_stock_real(symbol: str):
