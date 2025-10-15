@@ -183,11 +183,6 @@ async def get_company_data(symbol: str):
         logger.error(f"Error fetching data for {symbol}: {e}", exc_info=True)
         return {"symbol": symbol, "error": f"Error fetching data: {e}", "success": False}
 
-@app.get('/sw.js', include_in_schema=False)
-def serve_sw():
-    # The path needs to point to the file's location inside the container
-    return FileResponse('app/sw.js', media_type='application/javascript')
-
 @app.post("/api/predict/{symbol}", tags=["Prediction"])
 async def predict_stock_real(symbol: str):
     logger.info(f"Received prediction request for {symbol}")
