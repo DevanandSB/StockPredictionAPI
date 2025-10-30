@@ -350,7 +350,7 @@ nav {
 
 .search-result-item small {
     font-size: 12px;
-    color: var(--gray);
+    color: rgba(255, 255, 255, 0.7) !important; /* <-- FIX: Use a light, visible color */
 }
 
 /* Loading Indicator */
