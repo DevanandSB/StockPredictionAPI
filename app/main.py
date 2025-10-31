@@ -12,8 +12,6 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.responses import FileResponse
-
-# --- IMPORT THE REAL MODEL ---
 from app.models.prediction_model import initialize_model, prediction_model
 from app.models.schemas import HealthCheck
 from app.services import data_fetcher
@@ -26,7 +24,7 @@ app = FastAPI(title="Stock Market Prediction API", version="3.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Consider restricting this for production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -120,7 +118,7 @@ async def read_intro(request: Request):
     return templates.TemplateResponse("intro.html", {"request": request, "companies": COMPANY_LIST})
 
 
-@app.get("/mid-sem-ppt", response_class=HTMLResponse, tags=["Web Interface"])
+@app.get("/final-ppt", response_class=HTMLResponse, tags=["Web Interface"])
 async def read_ppt(request: Request):
     return templates.TemplateResponse("ppt.html", {"request": request, "companies": COMPANY_LIST})
 

@@ -7600,6 +7600,10 @@
         "name": "Tata Chemicals Limited"
     },
     {
+        "symbol": "TATACAP",
+        "name": "Tata Capital Limited"
+    },
+    {
         "symbol": "TATACOMM",
         "name": "Tata Communications Limited"
     },
@@ -7618,6 +7622,10 @@
     {
         "symbol": "TATAMOTORS",
         "name": "Tata Motors Passenger Vehicles"
+    },
+    {
+        "symbol": "TATAMOTORS",
+        "name": "Tata Motors Commercial Vehicles"
     },
     {
         "symbol": "TATAPOWER",

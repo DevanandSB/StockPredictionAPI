@@ -1,0 +1,152 @@
+[
+  {
+    "symbol": "RELIANCE",
+    "name": "Reliance Industries Limited",
+    "exchange": "NSE",
+    "icon": "https://assets-netstorage.groww.in/stock-assets/logos/NSE:RELIANCE.png"
+  },
+  {
+    "symbol": "TCS",
+    "name": "Tata Consultancy Services Limited",
+    "exchange": "NSE",
+    "icon": "https://assets-netstorage.groww.in/stock-assets/logos/NSE:TCS.png"
+  },
+  {
+    "symbol": "HDFCBANK",
+    "name": "HDFC Bank Limited",
+    "exchange": "NSE",
+    "icon": "https://assets-netstorage.groww.in/stock-assets/logos/NSE:HDFCBANK.png"
+  },
+  {
+    "symbol": "INFY",
+    "name": "Infosys Limited",
+    "exchange": "NSE",
+    "icon": "https://assets-netstorage.groww.in/stock-assets/logos/NSE:INFY.png"
+  },
+  {
+    "symbol": "ZYDUSWELL",
+    "name": "Zydus Wellness Limited",
+    "exchange": "NSE",
+    "icon": "https://assets-netstorage.groww.in/stock-assets/logos/NSE:ZYDUSWELL.png"
+  },
+  {
+    "symbol": "HINDUNILVR",
+    "name": "Hindustan Unilever Limited",
+    "exchange": "NSE",
+    "icon": "https://assets-netstorage.groww.in/stock-assets/logos/NSE:HINDUNILVR.png"
+  },
+  {
+    "symbol": "ICICIBANK",
+    "name": "ICICI Bank Limited",
+    "exchange": "NSE",
+    "icon": "https://assets-netstorage.groww.in/stock-assets/logos/NSE:ICICIBANK.png"
+  },
+  {
+    "symbol": "SBIN",
+    "name": "State Bank of India",
+    "exchange": "NSE",
+    "icon": "https://assets-netstorage.groww.in/stock-assets/logos/NSE:SBIN.png"
+  },
+  {
+    "symbol": "BAJFINANCE",
+    "name": "Bajaj Finance Limited",
+    "exchange": "NSE",
+    "icon": "https://assets-netstorage.groww.in/stock-assets/logos/NSE:BAJFINANCE.png"
+  },
+  {
+    "symbol": "BHARTIARTL",
+    "name": "Bharti Airtel Limited",
+    "exchange": "NSE",
+    "icon": "https://assets-netstorage.groww.in/stock-assets/logos/NSE:BHARTIARTL.png"
+  },
+  {
+    "symbol": "KOTAKBANK",
+    "name": "Kotak Mahindra Bank Limited",
+    "exchange": "NSE",
+    "icon": "https://assets-netstorage.groww.in/stock-assets/logos/NSE:KOTAKBANK.png"
+  },
+  {
+    "symbol": "LT",
+    "name": "Larsen & Toubro Limited",
+    "exchange": "NSE",
+    "icon": "https://assets-netstorage.groww.in/stock-assets/logos/NSE:LT.png"
+  },
+  {
+    "symbol": "AXISBANK",
+    "name": "Axis Bank Limited",
+    "exchange": "NSE",
+    "icon": "https://assets-netstorage.groww.in/stock-assets/logos/NSE:AXISBANK.png"
+  },
+  {
+    "symbol": "ITC",
+    "name": "ITC Limited",
+    "exchange": "NSE",
+    "icon": "https://assets-netstorage.groww.in/stock-assets/logos/NSE:ITC.png"
+  },
+  {
+    "symbol": "HCLTECH",
+    "name": "HCL Technologies Limited",
+    "exchange": "NSE",
+    "icon": "https://assets-netstorage.groww.in/stock-assets/logos/NSE:HCLTECH.png"
+  },
+  {
+    "symbol": "500325",
+    "name": "Reliance Industries Limited",
+    "exchange": "BSE",
+    "icon": "https://assets-netstorage.groww.in/stock-assets/logos/BSE:500325.png"
+  },
+  {
+    "symbol": "532540",
+    "name": "Tata Consultancy Services Limited",
+    "exchange": "BSE",
+    "icon": "https://assets-netstorage.groww.in/stock-assets/logos/BSE:532540.png"
+  },
+  {
+    "symbol": "500180",
+    "name": "HDFC Bank Limited",
+    "exchange": "BSE",
+    "icon": "https://assets-netstorage.groww.in/stock-assets/logos/BSE:500180.png"
+  },
+  {
+    "symbol": "500209",
+    "name": "Infosys Limited",
+    "exchange": "BSE",
+    "icon": "https://assets-netstorage.groww.in/stock-assets/logos/BSE:500209.png"
+  },
+  {
+    "symbol": "500696",
+    "name": "Hindustan Unilever Limited",
+    "exchange": "BSE",
+    "icon": "https://assets-netstorage.groww.in/stock-assets/logos/BSE:500696.png"
+  },
+  {
+    "symbol": "532174",
+    "name": "ICICI Bank Limited",
+    "exchange": "BSE",
+    "icon": "https://assets-netstorage.groww.in/stock-assets/logos/BSE:532174.png"
+  },
+  {
+    "symbol": "500112",
+    "name": "State Bank of India",
+    "exchange": "BSE",
+    "icon": "https://assets-netstorage.groww.in/stock-assets/logos/BSE:500112.png"
+  },
+  {
+    "symbol": "500247",
+    "name": "Kotak Mahindra Bank Limited",
+    "exchange": "BSE",
+    "icon": "https://assets-netstorage.groww.in/stock-assets/logos/BSE:500247.png"
+  },
+  {
+    "symbol": "500510",
+    "name": "Larsen & Toubro Limited",
+    "exchange": "BSE",
+    "icon": "https://assets-netstorage.groww.in/stock-assets/logos/BSE:500510.png"
+  },
+  {
+    "symbol": "532215",
+    "name": "Axis Bank Limited",
+    "exchange": "BSE",
+    "icon": "https://assets-netstorage.groww.in/stock-assets/logos/BSE:532215.png"
+  }
+]
