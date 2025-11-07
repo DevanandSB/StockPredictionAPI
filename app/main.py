@@ -105,7 +105,7 @@ async def server_error(request: Request, exc: HTTPException):
 # Each route now has a unique function name to avoid conflicts.
 @app.get("/", response_class=HTMLResponse, tags=["Web Interface"])
 async def read_root(request: Request):
-    return templates.TemplateResponse("home.html", {"request": request, "companies": COMPANY_LIST})
+    return templates.TemplateResponse("closed.html", {"request": request, "companies": COMPANY_LIST})
 
 
 @app.get("/home", response_class=HTMLResponse, tags=["Web Interface"])
